@@ -342,10 +342,8 @@ public class CallActivity extends Activity
     Thread a = new Thread(new Runnable() {
       @Override
       public void run() {
-        peerConnectionClient.SendData("File:OV_ACM.mkv");
         File f = new File("/mnt/sata/OV_ACM.mkv");
         peerConnectionClient.SendFile(f);
-        peerConnectionClient.SendData("File:END");
       }
     });
     a.start();

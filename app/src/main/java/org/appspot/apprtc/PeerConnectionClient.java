@@ -457,7 +457,7 @@ public class PeerConnectionClient {
           "OfferToReceiveVideo", "true"));
     } else {
       sdpMediaConstraints.mandatory.add(new KeyValuePair(
-          "OfferToReceiveVideo", "false"));
+              "OfferToReceiveVideo", "false"));
     }
   }
 
@@ -470,7 +470,22 @@ public class PeerConnectionClient {
     }
   }
 
+  public void SendFileInfo(String data) {
+    data = "File:"+data;
+    ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
+    if(outDataChannel!=null)
+    {
+      Log.d("HANK","SendData");
+      outDataChannel.send(new DataChannel.Buffer(buffer,false));
+    }
+  }
+
+
   public void SendFile(final File f) {
+
+    // Send file name first, the receive device will create the file.
+    SendFileInfo(f.getName());
+
     int dividedSize = 1000;
     long fileSize = f.length();
 
@@ -487,7 +502,7 @@ public class PeerConnectionClient {
           nextSendSize = (int)(fileSize-sentSize);
         }
         else {
-          // Send Over
+          // file Send Over
           break;
         }
 
@@ -499,12 +514,18 @@ public class PeerConnectionClient {
           outDataChannel.send(new DataChannel.Buffer(byteBuffer, true));
           Log.d("HANK", "Send File : " + ((float) sentSize * 100 / (float) fileSize) + "%");
         }
-        sentSize=sentSize+nextSendSize;
+        sentSize += nextSendSize;
       }
       fileInputStream.close();
-      
+
+      //Send END message to receive device.
+      SendFileInfo("END");
+
     } catch (Exception e) {
       e.printStackTrace();
+
+      //if send fail, send ERROR message to receive device
+      SendFileInfo("ERROR");
       Log.e("HANK","Send Data error");
     }
   }
