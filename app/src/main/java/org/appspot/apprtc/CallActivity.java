@@ -54,6 +54,8 @@ import org.webrtc.VideoRenderer;
 import org.webrtc.VideoRendererGui;
 import org.webrtc.VideoRendererGui.ScalingType;
 
+import java.io.File;
+
 /**
  * Activity for peer connection call setup, call waiting
  * and call view.
@@ -91,6 +93,11 @@ public class CallActivity extends Activity
       "org.appspot.apprtc.CPUOVERUSE_DETECTION";
   public static final String EXTRA_DISPLAY_HUD =
       "org.appspot.apprtc.DISPLAY_HUD";
+  //Hank Extension
+  public static final String EXTRA_CHAT_ROOM = "test.via.hank.CHAT_ROOM";
+  public static final String EXTRA_CREATE_SIDE = "test.via.hank.CREATE_SIDE";
+
+
   public static final String EXTRA_CMDLINE =
       "org.appspot.apprtc.CMDLINE";
   public static final String EXTRA_RUNTIME =
@@ -208,10 +215,10 @@ public class CallActivity extends Activity
     }
 
     // Get Intent parameters.
-    final Intent intent = getIntent();
-    Uri roomUri = intent.getData();
-    if (roomUri == null) {
-      logAndToast(getString(R.string.missing_url));
+      final Intent intent = getIntent();
+      Uri roomUri = intent.getData();
+      if (roomUri == null) {
+        logAndToast(getString(R.string.missing_url));
       Log.e(TAG, "Didn't get any URL in intent!");
       setResult(RESULT_CANCELED);
       finish();
@@ -226,6 +233,7 @@ public class CallActivity extends Activity
       return;
     }
     boolean loopback = intent.getBooleanExtra(EXTRA_LOOPBACK, false);
+
     peerConnectionParameters = new PeerConnectionParameters(
         intent.getBooleanExtra(EXTRA_VIDEO_CALL, true),
         loopback,
@@ -238,7 +246,11 @@ public class CallActivity extends Activity
         intent.getIntExtra(EXTRA_AUDIO_BITRATE, 0),
         intent.getStringExtra(EXTRA_AUDIOCODEC),
         intent.getBooleanExtra(EXTRA_NOAUDIOPROCESSING_ENABLED, false),
-        intent.getBooleanExtra(EXTRA_CPUOVERUSE_DETECTION, true));
+        intent.getBooleanExtra(EXTRA_CPUOVERUSE_DETECTION, true),
+            /*Hank Extension*/
+        intent.getBooleanExtra(EXTRA_CHAT_ROOM,false),
+        intent.getBooleanExtra(EXTRA_CREATE_SIDE,false));
+
     commandLineRun = intent.getBooleanExtra(EXTRA_CMDLINE, false);
     runTimeMs = intent.getIntExtra(EXTRA_RUNTIME, 0);
 
@@ -317,6 +329,29 @@ public class CallActivity extends Activity
     updateVideoView();
   }
 
+  public void onDataTransfer() {
+    Log.d("HANK","onDataTransfer");
+    logAndToast("Send data lo.");
+    peerConnectionClient.SendData("HELLO");
+  }
+
+  public void onFileTransfer()
+  {
+    Log.d("HANK", "onFileTransfer");
+    logAndToast("Send File lo");
+    Thread a = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        peerConnectionClient.SendData("File:OV_ACM.mkv");
+        File f = new File("/mnt/sata/OV_ACM.mkv");
+        peerConnectionClient.SendFile(f);
+        peerConnectionClient.SendData("File:END");
+      }
+    });
+    a.start();
+
+  }
+
   // Helper functions.
   private void toggleCallControlFragmentVisibility() {
     if (!iceConnected || !callFragment.isAdded()) {
@@ -338,8 +373,8 @@ public class CallActivity extends Activity
 
   private void updateVideoView() {
     VideoRendererGui.update(remoteRender,
-        REMOTE_X, REMOTE_Y,
-        REMOTE_WIDTH, REMOTE_HEIGHT, scalingType, false);
+            REMOTE_X, REMOTE_Y,
+            REMOTE_WIDTH, REMOTE_HEIGHT, scalingType, false);
     if (iceConnected) {
       VideoRendererGui.update(localRender,
           LOCAL_X_CONNECTED, LOCAL_Y_CONNECTED,
@@ -495,7 +530,7 @@ public class CallActivity extends Activity
     }
     logAndToast("Creating peer connection, delay=" + delta + "ms");
     peerConnectionClient.createPeerConnection(
-        localRender, remoteRender, signalingParameters);
+            localRender, remoteRender, signalingParameters);
 
     if (signalingParameters.initiator) {
       logAndToast("Creating OFFER...");
@@ -558,7 +593,7 @@ public class CallActivity extends Activity
       public void run() {
         if (peerConnectionClient == null) {
           Log.e(TAG,
-              "Received ICE candidate for non-initilized peer connection.");
+                  "Received ICE candidate for non-initilized peer connection.");
           return;
         }
         peerConnectionClient.addRemoteIceCandidate(candidate);
@@ -660,5 +695,10 @@ public class CallActivity extends Activity
   @Override
   public void onPeerConnectionError(final String description) {
     reportError(description);
+  }
+
+  @Override
+  public void onPeerMessage(final String description) {
+    logAndToast("Recevie : "+description);
   }
 }

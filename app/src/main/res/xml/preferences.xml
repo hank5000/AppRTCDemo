@@ -114,4 +114,25 @@
            android:defaultValue="@string/pref_displayhud_default" />
     </PreferenceCategory>
 
+
+    <PreferenceCategory
+        android:key="@string/pref_hank_used_key"
+        android:title="@string/pref_hank_used_title">
+
+        <CheckBoxPreference
+            android:key="@string/pref_enable_chat_room_key_key"
+            android:title="@string/pref_enable_chat_room_key_title"
+            android:dialogTitle="@string/pref_enable_chat_room_key_dlg"
+            android:defaultValue="@string/pref_enable_chat_room_key_default" />
+
+        <CheckBoxPreference
+            android:key="@string/pref_enable_channel_create_side_key"
+            android:title="@string/pref_enable_channel_create_side_title"
+            android:dialogTitle="@string/pref_enable_channel_create_side_dlg"
+            android:defaultValue="@string/pref_enable_channel_create_side_default" />
+
+    </PreferenceCategory>
+
+
+
 </PreferenceScreen>

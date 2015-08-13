@@ -17,6 +17,7 @@
     <string name="missing_url">FATAL ERROR: Missing URL to connect to.</string>
     <string name="ok">OK</string>
     <string name="switch_camera">Switch front/back camera</string>
+    <string name="data_transfer">Transfer Data</string>
     <string name="toggle_debug">Toggle debug view</string>
     <string name="action_settings">Settings</string>
     <string name="add_room_description">Add new room to the list</string>
@@ -105,9 +106,28 @@
     <string name="pref_room_server_url_dlg">Enter a room server URL.</string>
     <string name="pref_room_server_url_default" translatable="false">https://apprtc.appspot.com</string>
 
+    <!--<string name="pref_room_server_url_default" translatable="false">http://52.26.83.133:8080</string>-->
+
     <string name="pref_displayhud_key">displayhud_preference</string>
     <string name="pref_displayhud_title">Display call statistics.</string>
     <string name="pref_displayhud_dlg">Display call statistics.</string>
     <string name="pref_displayhud_default" translatable="false">false</string>
+
+
+    <string name="pref_hank_used_key">hankused_preference</string>
+    <string name="pref_hank_used_title">Hank Extension Function</string>
+
+    <string name="pref_enable_chat_room_key_key">Enable Data Transfer(Chat Room)</string>
+    <string name="pref_enable_chat_room_key_title">Enable chat room</string>
+    <string name="pref_enable_chat_room_key_dlg">Enable Data Transfer Function.</string>
+    <string name="pref_enable_chat_room_key_default">false</string>
+
+    <string name="pref_enable_channel_create_side_key">Set Data Channel Create Side</string>
+    <string name="pref_enable_channel_create_side_title">Create side</string>
+    <string name="pref_enable_channel_create_side_dlg">Create Data Channel</string>
+    <string name="pref_enable_channel_create_side_default">false</string>
+
+
+
 
 </resources>

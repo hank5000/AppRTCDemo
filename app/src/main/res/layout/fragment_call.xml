@@ -18,11 +18,11 @@
     <LinearLayout
            android:id="@+id/buttons_call_container"
            android:orientation="horizontal"
-           android:layout_alignParentBottom="true"
-           android:layout_marginBottom="32dp"
-           android:layout_centerHorizontal="true"
-           android:layout_width="wrap_content"
-           android:layout_height="wrap_content">
+        android:layout_marginBottom="34dp"
+        android:layout_width="wrap_content"
+           android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true">
 
        <ImageButton
            android:id="@+id/button_call_disconnect"
@@ -46,6 +46,16 @@
            android:contentDescription="@string/disconnect_call"
            android:layout_width="48dp"
            android:layout_height="48dp"/>
+
+        <ImageButton
+            android:id="@+id/button_data_transfer"
+            android:background="@android:drawable/ic_menu_camera"
+            android:contentDescription="@string/data_transfer"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_alignTop="@+id/buttons_call_container"
+            android:layout_toRightOf="@+id/buttons_call_container"
+            android:layout_toEndOf="@+id/buttons_call_container" />
     </LinearLayout>
 
 </RelativeLayout>

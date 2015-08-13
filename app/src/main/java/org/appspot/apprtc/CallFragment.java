@@ -47,9 +47,11 @@ public class CallFragment extends Fragment {
   private ImageButton disconnectButton;
   private ImageButton cameraSwitchButton;
   private ImageButton videoScalingButton;
+  private ImageButton dataTransferButton;
   private OnCallEvents callEvents;
   private ScalingType scalingType;
   private boolean videoCallEnabled = true;
+  int j = 0;
 
   /**
    * Call control interface for container activity.
@@ -58,6 +60,8 @@ public class CallFragment extends Fragment {
     public void onCallHangUp();
     public void onCameraSwitch();
     public void onVideoScalingSwitch(ScalingType scalingType);
+    public void onDataTransfer();
+    public void onFileTransfer();
   }
 
   @Override
@@ -75,6 +79,8 @@ public class CallFragment extends Fragment {
         (ImageButton) controlView.findViewById(R.id.button_call_switch_camera);
     videoScalingButton =
         (ImageButton) controlView.findViewById(R.id.button_call_scaling_mode);
+    dataTransferButton =
+            (ImageButton) controlView.findViewById(R.id.button_data_transfer);
 
     // Add buttons click events.
     disconnectButton.setOnClickListener(new View.OnClickListener() {
@@ -106,6 +112,15 @@ public class CallFragment extends Fragment {
         callEvents.onVideoScalingSwitch(scalingType);
       }
     });
+
+    dataTransferButton.setOnClickListener(new View.OnClickListener() {
+      @Override
+      public void onClick(View view) {
+          callEvents.onFileTransfer();
+      }
+    });
+
+
     scalingType = ScalingType.SCALE_ASPECT_FILL;
 
     return controlView;

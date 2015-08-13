@@ -87,6 +87,12 @@ public class ConnectActivity extends Activity {
   private String keyprefRoomServerUrl;
   private String keyprefRoom;
   private String keyprefRoomList;
+
+  // Hank Extension.
+  private String keyperfEnableChatRoom;
+  private String keyperfChannelCreateSide;
+  //
+
   private ArrayList<String> roomList;
   private ArrayAdapter<String> adapter;
 
@@ -113,6 +119,12 @@ public class ConnectActivity extends Activity {
     keyprefRoomServerUrl = getString(R.string.pref_room_server_url_key);
     keyprefRoom = getString(R.string.pref_room_key);
     keyprefRoomList = getString(R.string.pref_room_list_key);
+
+    // Hank Extension
+    keyperfEnableChatRoom = getString(R.string.pref_enable_chat_room_key_key);
+    keyperfChannelCreateSide = getString(R.string.pref_enable_channel_create_side_key);
+
+
 
     setContentView(R.layout.activity_connect);
 
@@ -334,6 +346,17 @@ public class ConnectActivity extends Activity {
     boolean displayHud = sharedPref.getBoolean(keyprefDisplayHud,
         Boolean.valueOf(getString(R.string.pref_displayhud_default)));
 
+    boolean bEnableChatRoom = sharedPref.getBoolean(
+            keyperfEnableChatRoom,
+            Boolean.valueOf(getString(R.string.pref_enable_chat_room_key_default)));
+
+    boolean bCreateChannelSide = sharedPref.getBoolean(
+            keyperfChannelCreateSide,
+            Boolean.valueOf(getString(R.string.pref_enable_channel_create_side_default)));
+
+
+
+
     // Start AppRTCDemo activity.
     Log.d(TAG, "Connecting to room " + roomId + " at URL " + roomUrl);
     if (validateUrl(roomUrl)) {
@@ -356,6 +379,10 @@ public class ConnectActivity extends Activity {
       intent.putExtra(CallActivity.EXTRA_CPUOVERUSE_DETECTION,
           cpuOveruseDetection);
       intent.putExtra(CallActivity.EXTRA_DISPLAY_HUD, displayHud);
+      // Hank Extension
+      intent.putExtra(CallActivity.EXTRA_CHAT_ROOM, bEnableChatRoom);
+      intent.putExtra(CallActivity.EXTRA_CREATE_SIDE, bCreateChannelSide);
+      //
       intent.putExtra(CallActivity.EXTRA_CMDLINE, commandLineRun);
       intent.putExtra(CallActivity.EXTRA_RUNTIME, runTimeMs);
 
