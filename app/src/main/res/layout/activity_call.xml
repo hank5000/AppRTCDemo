@@ -8,6 +8,11 @@
 
     <android.opengl.GLSurfaceView
         android:id="@+id/glview_call"
+        android:layout_width="30px"
+        android:layout_height="30px" />
+
+    <SurfaceView
+        android:id="@+id/liveView_call"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 

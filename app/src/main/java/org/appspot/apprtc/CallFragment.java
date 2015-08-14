@@ -60,8 +60,9 @@ public class CallFragment extends Fragment {
     public void onCallHangUp();
     public void onCameraSwitch();
     public void onVideoScalingSwitch(ScalingType scalingType);
-    public void onDataTransfer();
+    public void onMessageTransfer();
     public void onFileTransfer();
+    public void onLiveView();
   }
 
   @Override
@@ -116,7 +117,7 @@ public class CallFragment extends Fragment {
     dataTransferButton.setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View view) {
-          callEvents.onFileTransfer();
+          callEvents.onLiveView();
       }
     });
 
