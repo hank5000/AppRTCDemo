@@ -38,31 +38,23 @@ import android.app.FragmentTransaction;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.media.MediaCodec;
-import android.media.MediaFormat;
+
 import android.net.Uri;
-import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager.LayoutParams;
 import android.widget.Toast;
-import android.media.MediaPlayer;
-
 
 import org.webrtc.IceCandidate;
 import org.webrtc.SessionDescription;
 import org.webrtc.StatsReport;
-import org.webrtc.VideoRenderer;
-import org.webrtc.VideoRendererGui;
 import org.webrtc.VideoRendererGui.ScalingType;
 
 import java.io.File;
-import java.nio.ByteBuffer;
 
 /**
  * Activity for peer connection call setup, call waiting
@@ -121,29 +113,12 @@ public class CallActivity extends Activity
 
   // Peer connection statistics callback period in ms.
   private static final int STAT_CALLBACK_PERIOD = 1000;
-  // Local preview screen position before call is connected.
-  private static final int LOCAL_X_CONNECTING = 0;
-  private static final int LOCAL_Y_CONNECTING = 0;
-  private static final int LOCAL_WIDTH_CONNECTING = 100;
-  private static final int LOCAL_HEIGHT_CONNECTING = 100;
-  // Local preview screen position after call is connected.
-  private static final int LOCAL_X_CONNECTED = 72;
-  private static final int LOCAL_Y_CONNECTED = 72;
-  private static final int LOCAL_WIDTH_CONNECTED = 25;
-  private static final int LOCAL_HEIGHT_CONNECTED = 25;
-  // Remote video screen position
-  private static final int REMOTE_X = 0;
-  private static final int REMOTE_Y = 0;
-  private static final int REMOTE_WIDTH = 100;
-  private static final int REMOTE_HEIGHT = 100;
 
   private PeerConnectionClient peerConnectionClient = null;
   private AppRTCClient appRtcClient;
   private SignalingParameters signalingParameters;
   private AppRTCAudioManager audioManager = null;
-  private VideoRenderer.Callbacks localRender;
-  private VideoRenderer.Callbacks remoteRender;
-  private ScalingType scalingType;
+
   private Toast logToast;
   private boolean commandLineRun;
   private int runTimeMs;
@@ -156,20 +131,19 @@ public class CallActivity extends Activity
   private long callStartedTimeMs = 0;
 
   // Controls
-  private GLSurfaceView videoView;
   CallFragment callFragment;
   HudFragment hudFragment;
 
-
   // Live View
-  public SurfaceView liveView;
-  SurfaceHolder liveViewHolder;
-  MediaPlayer mp;
-  ///////////////////////////////////
-  //TEST: too see SurfaceView Working
+  public SurfaceView[] liveView = new SurfaceView[4];
+  SurfaceHolder[] liveViewHolder = new SurfaceHolder[4];
+//
+//  public SurfaceView liveView2;
+//  SurfaceHolder liveViewHolder2;
 
   @Override
   public void surfaceCreated(SurfaceHolder holder) {
+    createPeerConnectionFactory();
 
   }
 
@@ -208,35 +182,10 @@ public class CallActivity extends Activity
 
     iceConnected = false;
     signalingParameters = null;
-    scalingType = ScalingType.SCALE_ASPECT_FILL;
 
     // Create UI controls.
-    videoView = (GLSurfaceView) findViewById(R.id.glview_call);
     callFragment = new CallFragment();
     hudFragment = new HudFragment();
-
-
-    // Create video renderers.
-    VideoRendererGui.setView(videoView, new Runnable() {
-      @Override
-      public void run() {
-        createPeerConnectionFactory();
-      }
-    });
-    remoteRender = VideoRendererGui.create(
-        REMOTE_X, REMOTE_Y,
-        REMOTE_WIDTH, REMOTE_HEIGHT, scalingType, false);
-    localRender = VideoRendererGui.create(
-        LOCAL_X_CONNECTING, LOCAL_Y_CONNECTING,
-        LOCAL_WIDTH_CONNECTING, LOCAL_HEIGHT_CONNECTING, scalingType, true);
-
-    // Show/hide call control fragment on view click.
-    videoView.setOnClickListener(new View.OnClickListener() {
-      @Override
-      public void onClick(View view) {
-        toggleCallControlFragmentVisibility();
-      }
-    });
 
     // Check for mandatory permissions.
     for (String permission : MANDATORY_PERMISSIONS) {
@@ -269,17 +218,6 @@ public class CallActivity extends Activity
     boolean loopback = intent.getBooleanExtra(EXTRA_LOOPBACK, false);
 
     peerConnectionParameters = new PeerConnectionParameters(
-        intent.getBooleanExtra(EXTRA_VIDEO_CALL, true),
-        loopback,
-        intent.getIntExtra(EXTRA_VIDEO_WIDTH, 0),
-        intent.getIntExtra(EXTRA_VIDEO_HEIGHT, 0),
-        intent.getIntExtra(EXTRA_VIDEO_FPS, 0),
-        intent.getIntExtra(EXTRA_VIDEO_BITRATE, 0),
-        intent.getStringExtra(EXTRA_VIDEOCODEC),
-        intent.getBooleanExtra(EXTRA_HWCODEC_ENABLED, true),
-        intent.getIntExtra(EXTRA_AUDIO_BITRATE, 0),
-        intent.getStringExtra(EXTRA_AUDIOCODEC),
-        intent.getBooleanExtra(EXTRA_NOAUDIOPROCESSING_ENABLED, false),
         intent.getBooleanExtra(EXTRA_CPUOVERUSE_DETECTION, true),
             /*Hank Extension*/
         intent.getBooleanExtra(EXTRA_CHAT_ROOM,false),
@@ -303,43 +241,80 @@ public class CallActivity extends Activity
     ft.commit();
     startCall();
 
-    // For command line execution run connection for <runTimeMs> and exit.
-    if (commandLineRun && runTimeMs > 0) {
-      videoView.postDelayed(new Runnable() {
-        public void run() {
-          disconnect();
-        }
-      }, runTimeMs);
-    }
-
+    int j = 0;
     // Create Live View
-    liveView = (SurfaceView) findViewById(R.id.liveView_call);
-    liveViewHolder = liveView.getHolder();
-    liveViewHolder.addCallback(this);
+    liveView[j] = (SurfaceView) findViewById(R.id.liveView_call);
+    liveViewHolder[j] = liveView[0].getHolder();
+    liveViewHolder[j].addCallback(this);
 
+    j=1;
+    liveView[j] = (SurfaceView) findViewById(R.id.liveView_call2);
+    liveViewHolder[j] = liveView[1].getHolder();
+    liveViewHolder[j].addCallback(new SurfaceHolder.Callback() {
+      @Override
+      public void surfaceCreated(SurfaceHolder holder) {
+      }
 
+      @Override
+      public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+      }
 
+      @Override
+      public void surfaceDestroyed(SurfaceHolder holder) {
+
+      }
+    });
+
+    j=2;
+    liveView[j] = (SurfaceView) findViewById(R.id.liveView_call3);
+    liveViewHolder[j] = liveView[1].getHolder();
+    liveViewHolder[j].addCallback(new SurfaceHolder.Callback() {
+      @Override
+      public void surfaceCreated(SurfaceHolder holder) {
+      }
+
+      @Override
+      public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+      }
+
+      @Override
+      public void surfaceDestroyed(SurfaceHolder holder) {
+
+      }
+    });
+
+    j=3;
+    liveView[j] = (SurfaceView) findViewById(R.id.liveView_call4);
+    liveViewHolder[j] = liveView[1].getHolder();
+    liveViewHolder[j].addCallback(new SurfaceHolder.Callback() {
+      @Override
+      public void surfaceCreated(SurfaceHolder holder) {
+      }
+
+      @Override
+      public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+      }
+
+      @Override
+      public void surfaceDestroyed(SurfaceHolder holder) {
+
+      }
+    });
   }
 
   // Activity interfaces
   @Override
   public void onPause() {
     super.onPause();
-    videoView.onPause();
     activityRunning = false;
-    if (peerConnectionClient != null) {
-      peerConnectionClient.stopVideoSource();
-    }
+
   }
 
   @Override
   public void onResume() {
     super.onResume();
-    videoView.onResume();
     activityRunning = true;
-    if (peerConnectionClient != null) {
-      peerConnectionClient.startVideoSource();
-    }
+
   }
 
   @Override
@@ -360,26 +335,26 @@ public class CallActivity extends Activity
 
   @Override
   public void onCameraSwitch() {
-    if (peerConnectionClient != null) {
-      peerConnectionClient.switchCamera();
-    }
+
   }
 
   @Override
   public void onVideoScalingSwitch(ScalingType scalingType) {
-    this.scalingType = scalingType;
-    updateVideoView();
+    //this.scalingType = scalingType;
+    //updateVideoView();
   }
 
+  int a = 0;
   public void onLiveView() {
     logAndToast("Live View lo");
-    peerConnectionClient.SendVideo();
+    peerConnectionClient.SendVideo(peerConnectionClient.outDataChannels[a]);
+    a++;
   }
 
   public void onMessageTransfer() {
     Log.d("HANK","onMessageTransfer");
     logAndToast("Send Message HELLO");
-    peerConnectionClient.SendMessage("HELLO");
+    peerConnectionClient.SendMessage(peerConnectionClient.outDataChannels[0], "HELLO");
   }
 
   public void onFileTransfer()
@@ -391,7 +366,7 @@ public class CallActivity extends Activity
       @Override
       public void run() {
         File f = new File(filePath);
-        peerConnectionClient.SendFile(f);
+        peerConnectionClient.SendFile(peerConnectionClient.outDataChannels[0],f);
       }
     });
     a.start();
@@ -415,22 +390,6 @@ public class CallActivity extends Activity
     }
     ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
     ft.commit();
-  }
-
-  private void updateVideoView() {
-    VideoRendererGui.update(remoteRender,
-            REMOTE_X, REMOTE_Y,
-            REMOTE_WIDTH, REMOTE_HEIGHT, scalingType, false);
-    if (iceConnected) {
-      VideoRendererGui.update(localRender,
-          LOCAL_X_CONNECTED, LOCAL_Y_CONNECTED,
-          LOCAL_WIDTH_CONNECTED, LOCAL_HEIGHT_CONNECTED,
-          ScalingType.SCALE_ASPECT_FIT, true);
-    } else {
-      VideoRendererGui.update(localRender,
-          LOCAL_X_CONNECTING, LOCAL_Y_CONNECTING,
-          LOCAL_WIDTH_CONNECTING, LOCAL_HEIGHT_CONNECTING, scalingType, true);
-    }
   }
 
   private void startCall() {
@@ -468,7 +427,7 @@ public class CallActivity extends Activity
     Log.i(TAG, "Call connected: delay=" + delta + "ms");
 
     // Update video view.
-    updateVideoView();
+    //updateVideoView();
     // Enable statistics callback.
     peerConnectionClient.enableStatsEvents(true, STAT_CALLBACK_PERIOD);
   }
@@ -488,9 +447,7 @@ public class CallActivity extends Activity
           Log.d(TAG, "Creating peer connection factory, delay=" + delta + "ms");
           peerConnectionClient = PeerConnectionClient.getInstance();
           peerConnectionClient.setLiveViewSurface(liveView);
-          peerConnectionClient.createPeerConnectionFactory(CallActivity.this,
-              VideoRendererGui.getEGLContext(), peerConnectionParameters,
-              CallActivity.this);
+          peerConnectionClient.createPeerConnectionFactory(CallActivity.this, peerConnectionParameters, CallActivity.this);
         }
         if (signalingParameters != null) {
           Log.w(TAG, "EGL context is ready after room connection.");
@@ -576,8 +533,7 @@ public class CallActivity extends Activity
       return;
     }
     logAndToast("Creating peer connection, delay=" + delta + "ms");
-    peerConnectionClient.createPeerConnection(
-            localRender, remoteRender, signalingParameters);
+    peerConnectionClient.createPeerConnection(signalingParameters);
 
     if (signalingParameters.initiator) {
       logAndToast("Creating OFFER...");
@@ -749,25 +705,4 @@ public class CallActivity extends Activity
     logAndToast("Recevie : "+description);
   }
 
-
-
-
-  @Override
-  public void onVideoStart() {
-    Log.d("HANK","player video lo");
-    mp = new MediaPlayer();
-    try {
-      boolean b_padfone = true;
-      if(b_padfone) {
-        mp.setDataSource("/sdcard/Download/360.mkv");
-      } else {
-        mp.setDataSource("/mnt/sata/720.mp4");
-      }
-      mp.setDisplay(liveViewHolder);
-      mp.prepare();
-      mp.start();
-    } catch (Exception e) {
-      Log.d("HANK","Something wrong");
-    }
-  }
 }

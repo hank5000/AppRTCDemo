@@ -144,14 +144,14 @@ public class HudFragment extends Fragment {
         // Send video statistics.
         Map<String, String> reportMap = getReportMap(report);
         String trackId = reportMap.get("googTrackId");
-        if (trackId != null && trackId.contains(PeerConnectionClient.VIDEO_TRACK_ID)) {
-          fps = reportMap.get("googFrameRateSent");
-          videoSendStat.append(report.id).append("\n");
-          for (StatsReport.Value value : report.values) {
-            String name = value.name.replace("goog", "");
-            videoSendStat.append(name).append("=").append(value.value).append("\n");
-          }
-        }
+//        if (trackId != null && trackId.contains(PeerConnectionClient.VIDEO_TRACK_ID)) {
+//          fps = reportMap.get("googFrameRateSent");
+//          videoSendStat.append(report.id).append("\n");
+//          for (StatsReport.Value value : report.values) {
+//            String name = value.name.replace("goog", "");
+//            videoSendStat.append(name).append("=").append(value.value).append("\n");
+//          }
+//        }
       } else if (report.type.equals("ssrc") && report.id.contains("ssrc")
           && report.id.contains("recv")) {
         // Receive video statistics.
