@@ -1,29 +1,13 @@
 /*
- * libjingle
- * Copyright 2015 Google Inc.
+ *  Copyright 2014 The WebRTC Project Authors. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- *  1. Redistributions of source code must retain the above copyright notice,
- *     this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright notice,
- *     this list of conditions and the following disclaimer in the documentation
- *     and/or other materials provided with the distribution.
- *  3. The name of the author may not be used to endorse or promote products
- *     derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
- * EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *  Use of this source code is governed by a BSD-style license
+ *  that can be found in the LICENSE file in the root of the source
+ *  tree. An additional intellectual property rights grant can be found
+ *  in the file PATENTS.  All contributing project authors may
+ *  be found in the AUTHORS file in the root of the source tree.
  */
+
 
 package org.appspot.apprtc;
 
@@ -135,11 +119,9 @@ public class CallActivity extends Activity
   HudFragment hudFragment;
 
   // Live View
-  public SurfaceView[] liveView = new SurfaceView[4];
-  SurfaceHolder[] liveViewHolder = new SurfaceHolder[4];
-//
-//  public SurfaceView liveView2;
-//  SurfaceHolder liveViewHolder2;
+  public SurfaceView[] surfaceViews = new SurfaceView[4];
+  SurfaceHolder[] surfaceHolders = new SurfaceHolder[4];
+
 
   @Override
   public void surfaceCreated(SurfaceHolder holder) {
@@ -243,14 +225,14 @@ public class CallActivity extends Activity
 
     int j = 0;
     // Create Live View
-    liveView[j] = (SurfaceView) findViewById(R.id.liveView_call);
-    liveViewHolder[j] = liveView[0].getHolder();
-    liveViewHolder[j].addCallback(this);
+    surfaceViews[j] = (SurfaceView) findViewById(R.id.liveView_call);
+    surfaceHolders[j] = surfaceViews[0].getHolder();
+    surfaceHolders[j].addCallback(this);
 
     j=1;
-    liveView[j] = (SurfaceView) findViewById(R.id.liveView_call2);
-    liveViewHolder[j] = liveView[1].getHolder();
-    liveViewHolder[j].addCallback(new SurfaceHolder.Callback() {
+    surfaceViews[j] = (SurfaceView) findViewById(R.id.liveView_call2);
+    surfaceHolders[j] = surfaceViews[1].getHolder();
+    surfaceHolders[j].addCallback(new SurfaceHolder.Callback() {
       @Override
       public void surfaceCreated(SurfaceHolder holder) {
       }
@@ -266,9 +248,9 @@ public class CallActivity extends Activity
     });
 
     j=2;
-    liveView[j] = (SurfaceView) findViewById(R.id.liveView_call3);
-    liveViewHolder[j] = liveView[1].getHolder();
-    liveViewHolder[j].addCallback(new SurfaceHolder.Callback() {
+    surfaceViews[j] = (SurfaceView) findViewById(R.id.liveView_call3);
+    surfaceHolders[j] = surfaceViews[1].getHolder();
+    surfaceHolders[j].addCallback(new SurfaceHolder.Callback() {
       @Override
       public void surfaceCreated(SurfaceHolder holder) {
       }
@@ -284,9 +266,9 @@ public class CallActivity extends Activity
     });
 
     j=3;
-    liveView[j] = (SurfaceView) findViewById(R.id.liveView_call4);
-    liveViewHolder[j] = liveView[1].getHolder();
-    liveViewHolder[j].addCallback(new SurfaceHolder.Callback() {
+    surfaceViews[j] = (SurfaceView) findViewById(R.id.liveView_call4);
+    surfaceHolders[j] = surfaceViews[1].getHolder();
+    surfaceHolders[j].addCallback(new SurfaceHolder.Callback() {
       @Override
       public void surfaceCreated(SurfaceHolder holder) {
       }
@@ -347,14 +329,14 @@ public class CallActivity extends Activity
   int a = 0;
   public void onLiveView() {
     logAndToast("Live View lo");
-    peerConnectionClient.SendVideo(peerConnectionClient.outDataChannels[a]);
+    peerConnectionClient.SendVideo(peerConnectionClient.getVideoDataChannel(a));
     a++;
   }
 
   public void onMessageTransfer() {
-    Log.d("HANK","onMessageTransfer");
+    Log.d("HANK", "onMessageTransfer");
     logAndToast("Send Message HELLO");
-    peerConnectionClient.SendMessage(peerConnectionClient.outDataChannels[0], "HELLO");
+    peerConnectionClient.SendMessage(peerConnectionClient.getVideoDataChannel(0), "HELLO");
   }
 
   public void onFileTransfer()
@@ -366,11 +348,10 @@ public class CallActivity extends Activity
       @Override
       public void run() {
         File f = new File(filePath);
-        peerConnectionClient.SendFile(peerConnectionClient.outDataChannels[0],f);
+        peerConnectionClient.SendFile(peerConnectionClient.getVideoDataChannel(0),f);
       }
     });
     a.start();
-
   }
 
   // Helper functions.
@@ -404,21 +385,21 @@ public class CallActivity extends Activity
         roomConnectionParameters.roomUrl));
     appRtcClient.connectToRoom(roomConnectionParameters);
 
-    // Create and audio manager that will take care of audio routing,
-    // audio modes, audio device enumeration etc.
-    audioManager = AppRTCAudioManager.create(this, new Runnable() {
-        // This method will be called each time the audio state (number and
-        // type of devices) has been changed.
-        @Override
-        public void run() {
-          onAudioManagerChangedState();
-        }
-      }
-    );
-    // Store existing audio settings and change audio mode to
-    // MODE_IN_COMMUNICATION for best possible VoIP performance.
-    Log.d(TAG, "Initializing the audio manager...");
-    audioManager.init();
+//    // Create and audio manager that will take care of audio routing,
+//    // audio modes, audio device enumeration etc.
+//    audioManager = AppRTCAudioManager.create(this, new Runnable() {
+//        // This method will be called each time the audio state (number and
+//        // type of devices) has been changed.
+//        @Override
+//        public void run() {
+//          onAudioManagerChangedState();
+//        }
+//      }
+//    );
+//    // Store existing audio settings and change audio mode to
+//    // MODE_IN_COMMUNICATION for best possible VoIP performance.
+//    Log.d(TAG, "Initializing the audio manager...");
+//    audioManager.init();
   }
 
   // Should be called from UI thread
@@ -446,7 +427,7 @@ public class CallActivity extends Activity
           final long delta = System.currentTimeMillis() - callStartedTimeMs;
           Log.d(TAG, "Creating peer connection factory, delay=" + delta + "ms");
           peerConnectionClient = PeerConnectionClient.getInstance();
-          peerConnectionClient.setLiveViewSurface(liveView);
+          peerConnectionClient.setLiveViewSurface(surfaceViews);
           peerConnectionClient.createPeerConnectionFactory(CallActivity.this, peerConnectionParameters, CallActivity.this);
         }
         if (signalingParameters != null) {
@@ -468,10 +449,7 @@ public class CallActivity extends Activity
       peerConnectionClient.close();
       peerConnectionClient = null;
     }
-    if (audioManager != null) {
-      audioManager.close();
-      audioManager = null;
-    }
+
     if (iceConnected && !isError) {
       setResult(RESULT_OK);
     } else {
