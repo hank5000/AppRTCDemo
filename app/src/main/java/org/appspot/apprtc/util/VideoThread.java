@@ -19,6 +19,11 @@ public class VideoThread extends Thread {
     private MediaCodec decoder;
     private Surface surface;
     private InputStream is;
+    private boolean bStart = true;
+
+    public void setStop() {
+        bStart = false;
+    }
 
     String mMime;
     int    mWidth;
@@ -92,6 +97,10 @@ public class VideoThread extends Thread {
                         }
                     } catch (Exception e) {
                         Log.d("HANK","inputstream cannot read : "+e);
+
+                        if(!bStart) {
+                            break;
+                        }
                     }
                     collectLength = rawDataCollectBuffer.position();
 
@@ -138,6 +147,7 @@ public class VideoThread extends Thread {
                 }
             }
 
+
             int outIndex = decoder.dequeueOutputBuffer(info, 10000);
             switch (outIndex) {
                 case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
@@ -148,7 +158,7 @@ public class VideoThread extends Thread {
                     Log.d("DecodeActivity", "New format " + decoder.getOutputFormat());
                     break;
                 case MediaCodec.INFO_TRY_AGAIN_LATER:
-                    Log.d("DecodeActivity", "dequeueOutputBuffer timed out!");
+                    //Log.d("DecodeActivity", "dequeueOutputBuffer timed out!");
                     break;
                 default:
                     // ByteBuffer buffer = outputBuffers[outIndex];
@@ -158,13 +168,14 @@ public class VideoThread extends Thread {
                     } catch (InterruptedException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
+
                     }
                     decoder.releaseOutputBuffer(outIndex, true);
                     break;
             }
 
             // All decoded frames have been rendered, we can stop playing now
-            if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+            if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0 || (!bStart)) {
                 Log.d("DecodeActivity", "OutputBuffer BUFFER_FLAG_END_OF_STREAM");
                 break;
             }

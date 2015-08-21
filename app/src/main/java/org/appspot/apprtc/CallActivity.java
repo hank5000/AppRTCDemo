@@ -31,6 +31,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager.LayoutParams;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import org.webrtc.IceCandidate;
@@ -329,14 +330,69 @@ public class CallActivity extends Activity
   int a = 0;
   public void onLiveView() {
     logAndToast("Live View lo");
-    peerConnectionClient.SendVideo(peerConnectionClient.getVideoDataChannel(a));
+    peerConnectionClient.sendVideo(a,"/mnt/sata/abc.mp4");
     a++;
+  }
+
+  // TODO: implement interface, that it is used by fragment_call
+  public void onMessageSend() {
+
+    final View v = View.inflate(this,R.layout.message,null);
+    new AlertDialog.Builder(this)
+            .setTitle("Send Message")
+            .setView(v)
+            .setPositiveButton("Send", new DialogInterface.OnClickListener() {
+              public void onClick(DialogInterface dialog, int which) {
+                EditText message_et= (EditText) (v.findViewById(R.id.message_content));
+                String message = message_et.getText().toString()+"";
+                peerConnectionClient.sendMessage(message);
+              }
+            })
+            .setNegativeButton("Cancel" , new DialogInterface.OnClickListener() {
+              public void onClick(DialogInterface dialog, int which) {
+                logAndToast("Cancel!");
+              }
+            }).show();
+
+  }
+
+  public void onQueryFile() {
+
+  }
+
+  public void onRequestVideo() {
+
+    final View v = View.inflate(this,R.layout.request_video,null);
+    new AlertDialog.Builder(this)
+            .setTitle("Send Video Request")
+            .setView(v)
+            .setPositiveButton("Send", new DialogInterface.OnClickListener() {
+              public void onClick(DialogInterface dialog, int which) {
+                EditText filePath_et = (EditText) (v.findViewById(R.id.file_path));
+                EditText channel_et= (EditText) (v.findViewById(R.id.on_channel));
+
+                String filePath = filePath_et.getText().toString();
+                int channelNumber = Integer.valueOf(channel_et.getText().toString());
+
+                if(channelNumber>4 || channelNumber <0) {
+                  logAndToast("input the wrong channel, channel need lower than four");
+                }
+                else {
+                  peerConnectionClient.sendVideoRequest(channelNumber, filePath);
+                }
+              }
+            })
+            .setNegativeButton("Cancel" , new DialogInterface.OnClickListener() {
+              public void onClick(DialogInterface dialog, int which) {
+              logAndToast("Cancel!");
+              }
+            }).show();
   }
 
   public void onMessageTransfer() {
     Log.d("HANK", "onMessageTransfer");
     logAndToast("Send Message HELLO");
-    peerConnectionClient.SendMessage(peerConnectionClient.getVideoDataChannel(0), "HELLO");
+    peerConnectionClient.sendMessage("HELLO");
   }
 
   public void onFileTransfer()
@@ -344,14 +400,14 @@ public class CallActivity extends Activity
     Log.d("HANK", "onFileTransfer");
     final String filePath = "/mnt/sata/OV_ACM.mkv";
     logAndToast("Send File : " + filePath);
-    Thread a = new Thread(new Runnable() {
+    Thread fileSenderThread = new Thread(new Runnable() {
       @Override
       public void run() {
         File f = new File(filePath);
-        peerConnectionClient.SendFile(peerConnectionClient.getVideoDataChannel(0),f);
+        peerConnectionClient.sendFile(f);
       }
     });
-    a.start();
+    fileSenderThread.start();
   }
 
   // Helper functions.
@@ -680,7 +736,11 @@ public class CallActivity extends Activity
 
   @Override
   public void onPeerMessage(final String description) {
-    logAndToast("Recevie : "+description);
+    logAndToast("Recevie : " + description);
+  }
+  @Override
+  public void onShowReceivedMessage(final String description) {
+    logAndToast(description);
   }
 
 }

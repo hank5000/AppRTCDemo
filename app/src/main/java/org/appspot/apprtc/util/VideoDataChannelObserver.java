@@ -23,6 +23,8 @@ import java.util.Random;
  * Created by HankWu_Office on 2015/8/19.
  */
 public class VideoDataChannelObserver implements DataChannel.Observer {
+    public final static String VIDEO_PREFIX = "VIDEO";
+
     private LooperExecutor executor;
     private PeerConnectionClient.PeerConnectionEvents events;
     private SurfaceView surfaceView;
@@ -55,7 +57,7 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
     VideoThread vt = null;
 
     private boolean isVideoMessage(String msg) {
-        return msg.equalsIgnoreCase("VIDEO");
+        return msg.equalsIgnoreCase(VIDEO_PREFIX);
     }
 
     private enum VideoMessageType {
@@ -82,6 +84,19 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
     public void onStateChange() {
         // TODO: Here will show this data channel state, OPEN CLOSING CLOSE..., if CLOSING then STOP all thread (decode thread...)
         Log.d("HANK", dataChannel.label()+":"+dataChannel.state().toString());
+        if(dataChannel.state().toString().equalsIgnoreCase("CLOSING")) {
+            if(vt!=null) {
+                vt.setStop();
+                vt.interrupt();
+                vt=null;
+
+                bStart = false;
+
+                os = null;
+                writableByteChannel = null;
+                is = null;
+            }
+        }
     }
 
     @Override
@@ -181,19 +196,26 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
                         bStart = true;
                         break;
                     case STOP:
+                        if(bStart) {
+                            videoMsg = videoMsg + "STOP";
+                            bLiveView = false;
+                            bStart = false;
+                            try {
+                                os.close();
+                                is.close();
+                                os = null;
+                                is = null;
+                            } catch (Exception e) {
+                                Log.e("HANK", "Close input/output stream error : " + e);
+                            }
+                            vt.setStop();
+                            vt.interrupt();
 
-                        videoMsg = videoMsg + "STOP";
-                        bLiveView = false;
-                        bStart = false;
-                        try {
-                            os.close();
-                            is.close();
-                        } catch (Exception e) {
-                            Log.e("HANK","Close input/output stream error : "+e);
+                            vt = null;
+                            bShowToast = true;
+                        } else {
+                            Log.d("HANK","It is already stop lo.");
                         }
-                        vt.interrupt();
-                        vt = null;
-                        bShowToast = true;
                         break;
                 }
 

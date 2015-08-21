@@ -29,24 +29,23 @@ public class CallFragment extends Fragment {
   private View controlView;
   private TextView contactView;
   private ImageButton disconnectButton;
-  private ImageButton cameraSwitchButton;
-  private ImageButton videoScalingButton;
-  private ImageButton dataTransferButton;
+
+  private ImageButton messageButton;
+  private ImageButton fileButton;
+  private ImageButton reqVideoButton;
+
   private OnCallEvents callEvents;
-  private ScalingType scalingType;
-  private boolean videoCallEnabled = true;
-  int j = 0;
+
+
 
   /**
    * Call control interface for container activity.
    */
   public interface OnCallEvents {
     public void onCallHangUp();
-    public void onCameraSwitch();
-    public void onVideoScalingSwitch(ScalingType scalingType);
-    public void onMessageTransfer();
-    public void onFileTransfer();
-    public void onLiveView();
+    public void onMessageSend();
+    public void onQueryFile();
+    public void onRequestVideo();
   }
 
   @Override
@@ -60,12 +59,13 @@ public class CallFragment extends Fragment {
         (TextView) controlView.findViewById(R.id.contact_name_call);
     disconnectButton =
         (ImageButton) controlView.findViewById(R.id.button_call_disconnect);
-    cameraSwitchButton =
-        (ImageButton) controlView.findViewById(R.id.button_call_switch_camera);
-    videoScalingButton =
-        (ImageButton) controlView.findViewById(R.id.button_call_scaling_mode);
-    dataTransferButton =
-            (ImageButton) controlView.findViewById(R.id.button_data_transfer);
+    messageButton =
+        (ImageButton) controlView.findViewById(R.id.button_call_message);
+    fileButton =
+        (ImageButton) controlView.findViewById(R.id.button_call_video);
+    reqVideoButton =
+            (ImageButton) controlView.findViewById(R.id.button_call_video);
+
 
     // Add buttons click events.
     disconnectButton.setOnClickListener(new View.OnClickListener() {
@@ -75,38 +75,43 @@ public class CallFragment extends Fragment {
       }
     });
 
-    cameraSwitchButton.setOnClickListener(new View.OnClickListener() {
+    messageButton.setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View view) {
-        callEvents.onCameraSwitch();
+        callEvents.onMessageSend();
       }
     });
 
-    videoScalingButton.setOnClickListener(new View.OnClickListener() {
+    fileButton.setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View view) {
-        if (scalingType == ScalingType.SCALE_ASPECT_FILL) {
-          videoScalingButton.setBackgroundResource(
-              R.drawable.ic_action_full_screen);
-          scalingType = ScalingType.SCALE_ASPECT_FIT;
-        } else {
-          videoScalingButton.setBackgroundResource(
-              R.drawable.ic_action_return_from_full_screen);
-          scalingType = ScalingType.SCALE_ASPECT_FILL;
-        }
-        callEvents.onVideoScalingSwitch(scalingType);
+        callEvents.onQueryFile();
       }
     });
 
-    dataTransferButton.setOnClickListener(new View.OnClickListener() {
+    reqVideoButton.setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View view) {
-          callEvents.onLiveView();
+        callEvents.onRequestVideo();
       }
     });
 
 
-    scalingType = ScalingType.SCALE_ASPECT_FILL;
+//    fileButton.setOnClickListener(new View.OnClickListener() {
+//      @Override
+//      public void onClick(View view) {
+//        if (scalingType == ScalingType.SCALE_ASPECT_FILL) {
+//          videoScalingButton.setBackgroundResource(
+//              R.drawable.ic_action_full_screen);
+//          scalingType = ScalingType.SCALE_ASPECT_FIT;
+//        } else {
+//          videoScalingButton.setBackgroundResource(
+//              R.drawable.ic_action_return_from_full_screen);
+//          scalingType = ScalingType.SCALE_ASPECT_FILL;
+//        }
+//        callEvents.onVideoScalingSwitch(scalingType);
+//      }
+//    });
 
     return controlView;
   }
@@ -119,11 +124,10 @@ public class CallFragment extends Fragment {
     if (args != null) {
       String contactName = args.getString(CallActivity.EXTRA_ROOMID);
       contactView.setText(contactName);
-      videoCallEnabled = args.getBoolean(CallActivity.EXTRA_VIDEO_CALL, true);
     }
-    if (!videoCallEnabled) {
-      cameraSwitchButton.setVisibility(View.INVISIBLE);
-    }
+//    if (!videoCallEnabled) {
+//      cameraSwitchButton.setVisibility(View.INVISIBLE);
+//    }
   }
 
   @Override

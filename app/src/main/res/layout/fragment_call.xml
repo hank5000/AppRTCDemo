@@ -33,23 +33,24 @@
            android:layout_height="48dp"/>
 
        <ImageButton
-           android:id="@+id/button_call_switch_camera"
-           android:background="@android:drawable/ic_menu_camera"
+           android:id="@+id/button_call_message"
+           android:background="@drawable/message"
            android:contentDescription="@string/switch_camera"
            android:layout_marginEnd="8dp"
            android:layout_width="48dp"
-           android:layout_height="48dp"/>
+           android:layout_height="48dp"
+           android:cropToPadding="false" />
 
         <ImageButton
-           android:id="@+id/button_call_scaling_mode"
-           android:background="@drawable/ic_action_return_from_full_screen"
+           android:id="@+id/button_call_file"
+           android:background="@drawable/file"
            android:contentDescription="@string/disconnect_call"
            android:layout_width="48dp"
            android:layout_height="48dp"/>
 
         <ImageButton
-            android:id="@+id/button_data_transfer"
-            android:background="@android:drawable/ic_menu_camera"
+            android:id="@+id/button_call_video"
+            android:background="@drawable/video"
             android:contentDescription="@string/data_transfer"
             android:layout_width="48dp"
             android:layout_height="48dp"

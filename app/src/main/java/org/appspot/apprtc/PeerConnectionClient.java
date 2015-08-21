@@ -35,7 +35,7 @@ import org.webrtc.SessionDescription;
 import org.webrtc.StatsObserver;
 import org.webrtc.StatsReport;
 
-import org.appspot.apprtc.util.RequestDataChannelObserver;
+import org.appspot.apprtc.util.CommunicationChannelObserver;
 
 
 import java.io.File;
@@ -60,7 +60,7 @@ public class PeerConnectionClient {
   private static final String DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT = "DtlsSrtpKeyAgreement";
   private static final String VIDEO_CHANNEL_NAME = "VideoChannel";
   private static final String AUDIO_CHANNEL_NAME = "AudioChannel";
-  private static final String REQUEST_CHANNEL_NAME = "RequestChannel";
+  private static final String COMMUNICATION_CHANNEL_NAME = "CommunicationChannel";
 
   private static final PeerConnectionClient instance = new PeerConnectionClient();
   private final PCObserver pcObserver = new PCObserver();
@@ -73,9 +73,22 @@ public class PeerConnectionClient {
 
   private final int MAX_CHANNEL_NUMBER = 4;
 
-  public DataChannel requestChannel = null;
+  public DataChannel communicationChannel = null;
   private DataChannel[] videoDataChannels = new DataChannel[MAX_CHANNEL_NUMBER];
   private DataChannel[] audioDataChannels = new DataChannel[MAX_CHANNEL_NUMBER];
+
+  public Thread[] sendingThreads = new Thread[MAX_CHANNEL_NUMBER*2];
+
+  public void stopAllThread() {
+    for(int i=0;i<MAX_CHANNEL_NUMBER*2;i++) {
+      if(sendingThreads[i]!=null) {
+        sendingThreads[i].interrupt();
+        sendingThreads[i] = null;
+      }
+    }
+  }
+
+
 
   public DataChannel getVideoDataChannel(int index) {
     if(index>MAX_CHANNEL_NUMBER)
@@ -93,8 +106,8 @@ public class PeerConnectionClient {
     return audioDataChannels[index];
   }
 
-  public DataChannel getRequestChannel() {
-    return requestChannel;
+  public DataChannel getCommunicationChannel() {
+    return communicationChannel;
   }
 
 
@@ -186,6 +199,8 @@ public class PeerConnectionClient {
     public void onPeerConnectionError(final String description);
 
     public void onPeerMessage(final String description);
+
+    public void onShowReceivedMessage(final String description);
   }
 
   private PeerConnectionClient() {
@@ -194,6 +209,11 @@ public class PeerConnectionClient {
     // peer connection API calls to ensure new peer connection factory is
     // created on the same thread as previously destroyed factory.
     executor.requestStart();
+
+    for(int i=0;i<MAX_CHANNEL_NUMBER*2;i++) {
+      sendingThreads[i] = null;
+    }
+
   }
 
   public static PeerConnectionClient getInstance() {
@@ -280,17 +300,6 @@ public class PeerConnectionClient {
 
   }
 
-  /// DATA CHANNEL SENDER FUNCTION -START- ///
-  // MESSAGE SENDER
-  public void SendMessage(final DataChannel outChannel,String data) {
-    data = "MSG:"+data;
-    ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
-    if(outChannel!=null) {
-      Log.d("HANK","SendMessage");
-      outChannel.send(new DataChannel.Buffer(buffer,false));
-    }
-  }
-
   final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
   public static String bytesToHex(byte[] bytes) {
     char[] hexChars = new char[bytes.length * 2];
@@ -302,137 +311,41 @@ public class PeerConnectionClient {
     return new String(hexChars);
   }
 
-  // VIDEO MESSAGE SENDER
-  public void SendVideoInfo(DataChannel outChannel,String key, String value) {
-    String data = "Video:"+key+":"+value;
+
+  /// DATA CHANNEL SENDER FUNCTION -START- ///
+
+  // MESSAGE/REQUEST METHOD
+  // base on communicationChannel.
+  // MESSAGE SENDER
+  public void sendMessage(String data) {
+    final DataChannel outChannel = communicationChannel;
+
+    data = CommunicationChannelObserver.MESSAGE_PREFIX+":"+data;
     ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
-
-    Log.d("HANK","Send Video Info "+data);
-    outChannel.send(new DataChannel.Buffer(buffer, false));
-
-  }
-
-  public void SendVideoInfo(DataChannel outChannel,String key) {
-    String data = "Video:"+key;
-    ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
-    Log.d("HANK","Send Video Info "+data);
-    outChannel.send(new DataChannel.Buffer(buffer, false));
-  }
-
-  // VIDEO CONTENT SENDER, Local File only can support video part.
-  public void SendVideo(final DataChannel outChannel) {
-    try {
-      final MediaExtractor mediaExtractor = new MediaExtractor();
-      mediaExtractor.setDataSource("/mnt/sata/abc.mp4");
-      int Count = mediaExtractor.getTrackCount();
-      MediaFormat mf = null;
-      String mime = null;
-      for (int i = 0; i < Count; i++) {
-        mf = mediaExtractor.getTrackFormat(i);
-        mime = mf.getString(MediaFormat.KEY_MIME);
-        if (mime.subSequence(0, 5).equals("video")) {
-          mediaExtractor.selectTrack(i);
-          break;
-        }
-      }
-
-      SendVideoInfo(outChannel,"MIME", mf.getString(MediaFormat.KEY_MIME));
-      SendVideoInfo(outChannel,"Width", "" + mf.getInteger(MediaFormat.KEY_WIDTH));
-      SendVideoInfo(outChannel,"Height", "" + mf.getInteger(MediaFormat.KEY_HEIGHT));
-      ByteBuffer sps_b = mf.getByteBuffer("csd-0");
-      byte[] sps_ba = new byte[sps_b.remaining()];
-      sps_b.get(sps_ba);
-      SendVideoInfo(outChannel,"sps", bytesToHex(sps_ba));
-
-      mf.getByteBuffer("csd-1");
-      ByteBuffer pps_b = mf.getByteBuffer("csd-1");
-      byte[] pps_ba = new byte[pps_b.remaining()];
-      pps_b.get(pps_ba);
-      SendVideoInfo(outChannel,"pps", bytesToHex(pps_ba));
-      SendVideoInfo(outChannel,"Start");
-
-      final ByteBuffer naluBuffer = ByteBuffer.allocate(1024 * 1024);
-
-      Thread sendingThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-          int NALUCount = 0;
-          byte[] naluSizeByte = new byte[4];
-
-          while (!Thread.interrupted()) {
-
-            int naluSize = mediaExtractor.readSampleData(naluBuffer, 0);
-            //Log.d("HANK", "readSampleData : " + sampleSize);
-
-            if (naluSize > 0) {
-              NALUCount++;
-              //Log.d("HANK", "Send NALU length : " + sampleSize);
-
-              if (outChannel != null) {
-                // 1. Send NALU Size to connected device first.
-                naluSizeByte[0] = (byte) (naluSize & 0x000000ff);
-                naluSizeByte[1] = (byte) ((naluSize & 0x0000ff00) >> 8);
-                naluSizeByte[2] = (byte) ((naluSize & 0x00ff0000) >> 16);
-                naluSizeByte[3] = (byte) ((naluSize & 0xff000000) >> 24);
-                outChannel.send(new DataChannel.Buffer(ByteBuffer.wrap(naluSizeByte), true));
-
-                // 2. Divide NALU data by 1000
-                int sentSize = 0;
-                for (;;) {
-                  //Log.d("HANK","Send NALU("+NALUCount+")  : "+j+"/"+sampleSize);
-                  int dividedSize = DATA_CHANNEL_DIVIDE_SIZE_BYTE;
-                  if ((naluSize - sentSize) < dividedSize) {
-                    dividedSize = naluSize - sentSize;
-                  }
-                  //using bytebuffer.slice() , maybe decrease once memory copy
-                  naluBuffer.position(sentSize);
-                  naluBuffer.limit(dividedSize+sentSize);
-
-                  outChannel.send(new DataChannel.Buffer(naluBuffer.slice(), true));
-
-                  naluBuffer.limit(naluBuffer.capacity());
-
-                  sentSize = sentSize + dividedSize;
-                  if (sentSize >= naluSize) {
-                    break;
-                  }
-                }
-                try {
-                  // TODO: Using a good method to sync video
-                  Thread.sleep(33);
-                } catch (Exception e) {
-                  Log.d("HANK", "Sleep Error");
-                }
-              }
-              naluBuffer.clear();
-              mediaExtractor.advance();
-            } else {
-              Log.d("HANK", "No Frame lo.");
-
-              boolean bAutoLoop = true;
-              if(bAutoLoop) {
-                Log.d("HANK", "Enable Auto Loop");
-                mediaExtractor.seekTo(0, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
-              } else {
-                Log.d("HANK", "Auto Loop is disable");
-                break;
-              }
-
-            }
-          }
-          SendVideoInfo(outChannel,"STOP");
-        }
-      });
-      sendingThread.start();
-
-    } catch (Exception e) {
-      SendVideoInfo(outChannel,"STOP", "");
-      Log.d("HANK","some error "+ e);
+    if(outChannel!=null) {
+      Log.d("HANK","SendMessage");
+      outChannel.send(new DataChannel.Buffer(buffer,false));
     }
   }
 
+  public void sendVideoRequest(int onchannel,String videoPath) {
+    final DataChannel outChannel = communicationChannel;
+
+    String data = CommunicationChannelObserver.getRequestVideoMessage(onchannel,videoPath);
+    ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
+    if(outChannel!=null) {
+      Log.d("HANK","SendMessage");
+      outChannel.send(new DataChannel.Buffer(buffer,false));
+    }
+  }
+
+
+  // FILE METHOD
+  // TODO: Add File Channel, using communicationChannel currently
   // FILE MESSAGE SENDER
-  public void SendFileInfo(final DataChannel outChannel,String data) {
+  public void sendFileInfo(String data) {
+    final DataChannel outChannel = communicationChannel;
+
     data = "File:"+data;
     ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
     if(outChannel!=null)
@@ -441,11 +354,12 @@ public class PeerConnectionClient {
       outChannel.send(new DataChannel.Buffer(buffer,false));
     }
   }
-
   // FILE CONTENT SENDER
-  public void SendFile(final DataChannel outChannel,final File f) {
+  public void sendFile(final File f) {
+    final DataChannel outChannel = communicationChannel;
+
     // Send file name first, the receive device will create the file.
-    SendFileInfo(outChannel,f.getName());
+    sendFileInfo(f.getName());
 
     int dividedSize = DATA_CHANNEL_DIVIDE_SIZE_BYTE;
     long fileSize = f.length();
@@ -480,14 +394,184 @@ public class PeerConnectionClient {
       fileInputStream.close();
 
       //Send END message to receive device.
-      SendFileInfo(outChannel,"END");
+      sendFileInfo("END");
 
     } catch (Exception e) {
       e.printStackTrace();
 
       //if send fail, send ERROR message to receive device
-      SendFileInfo(outChannel,"ERROR");
+      sendFileInfo("ERROR");
       Log.e("HANK","Send Data error");
+    }
+  }
+
+
+  // VIDEO METHOD
+  // need input channelIndex to select correct videoChannel.
+  // VIDEO MESSAGE SENDER
+  public void sendVideoInfo(final int channelIndex,String key, String value) {
+    final DataChannel outChannel = videoDataChannels[channelIndex];
+
+    String data = VideoDataChannelObserver.VIDEO_PREFIX+":"+key+":"+value;
+    ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
+
+    Log.d("HANK","Send Video Info "+data);
+    outChannel.send(new DataChannel.Buffer(buffer, false));
+
+  }
+  public void sendVideoInfo(final int channelIndex,String key) {
+    DataChannel outChannel = videoDataChannels[channelIndex];
+    String data = VideoDataChannelObserver.VIDEO_PREFIX+":"+key;
+    ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
+    Log.d("HANK", "Send Video Info " + data);
+    outChannel.send(new DataChannel.Buffer(buffer, false));
+  }
+  // VIDEO CONTENT SENDER, Local File only can support video part.
+  public void sendVideo(final int channelIndex, String videoPath) {
+    final DataChannel outChannel = videoDataChannels[channelIndex];
+    try {
+      final MediaExtractor mediaExtractor = new MediaExtractor();
+      mediaExtractor.setDataSource(videoPath);
+      int Count = mediaExtractor.getTrackCount();
+      MediaFormat mf = null;
+      String mime = null;
+      for (int i = 0; i < Count; i++) {
+        mf = mediaExtractor.getTrackFormat(i);
+        mime = mf.getString(MediaFormat.KEY_MIME);
+        if (mime.subSequence(0, 5).equals("video")) {
+          mediaExtractor.selectTrack(i);
+          break;
+        }
+      }
+
+      sendVideoInfo(channelIndex,"MIME", mf.getString(MediaFormat.KEY_MIME));
+      sendVideoInfo(channelIndex,"Width", "" + mf.getInteger(MediaFormat.KEY_WIDTH));
+      sendVideoInfo(channelIndex,"Height", "" + mf.getInteger(MediaFormat.KEY_HEIGHT));
+      ByteBuffer sps_b = mf.getByteBuffer("csd-0");
+      byte[] sps_ba = new byte[sps_b.remaining()];
+      sps_b.get(sps_ba);
+      sendVideoInfo(channelIndex,"sps", bytesToHex(sps_ba));
+
+      mf.getByteBuffer("csd-1");
+      ByteBuffer pps_b = mf.getByteBuffer("csd-1");
+      byte[] pps_ba = new byte[pps_b.remaining()];
+      pps_b.get(pps_ba);
+      sendVideoInfo(channelIndex,"pps", bytesToHex(pps_ba));
+      sendVideoInfo(channelIndex,"Start");
+
+      final ByteBuffer naluBuffer = ByteBuffer.allocate(1024 * 1024);
+
+      Thread sendingThread = null;
+      int thread_index = 0;
+      for(;;) {
+          if(sendingThreads[thread_index] == null) {
+            sendingThreads[thread_index] = new Thread(new Runnable() {
+              @Override
+              public void run() {
+                int NALUCount = 0;
+                byte[] naluSizeByte = new byte[4];
+                long startTime = 0;
+                long endTime   = 0;
+                while (!Thread.interrupted()) {
+
+                  int naluSize = mediaExtractor.readSampleData(naluBuffer, 0);
+                  //Log.d("HANK", "readSampleData : " + sampleSize);
+
+                  if (naluSize > 0) {
+                    NALUCount++;
+                    //Log.d("HANK", "Send NALU length : " + sampleSize);
+
+
+                    startTime = System.currentTimeMillis();
+
+                    // 1. Send NALU Size to connected device first.
+                    naluSizeByte[0] = (byte) (naluSize & 0x000000ff);
+                    naluSizeByte[1] = (byte) ((naluSize & 0x0000ff00) >> 8);
+                    naluSizeByte[2] = (byte) ((naluSize & 0x00ff0000) >> 16);
+                    naluSizeByte[3] = (byte) ((naluSize & 0xff000000) >> 24);
+                    outChannel.send(new DataChannel.Buffer(ByteBuffer.wrap(naluSizeByte), true));
+
+                    // 2. Divide NALU data by 1000
+                    int sentSize = 0;
+                    for (;;) {
+                      //Log.d("HANK","Send NALU("+NALUCount+")  : "+j+"/"+sampleSize);
+                      int dividedSize = DATA_CHANNEL_DIVIDE_SIZE_BYTE;
+                      if ((naluSize - sentSize) < dividedSize) {
+                        dividedSize = naluSize - sentSize;
+                      }
+                      //using bytebuffer.slice() , maybe decrease once memory copy
+                      naluBuffer.position(sentSize);
+                      naluBuffer.limit(dividedSize+sentSize);
+
+                      outChannel.send(new DataChannel.Buffer(naluBuffer.slice(), true));
+
+                      naluBuffer.limit(naluBuffer.capacity());
+
+                      sentSize = sentSize + dividedSize;
+                      if (sentSize >= naluSize) {
+                        break;
+                      }
+                    }
+
+                    endTime = System.currentTimeMillis();
+
+                    if((endTime-startTime)<33 && (endTime-startTime)>=0) {
+                      try {
+                        // TODO: Using a good method to sync video
+                        // assume it is 30fs currently.
+                        Thread.sleep(33-(endTime-startTime));
+                        Log.d("HANK","Sleep : "+(33-(endTime-startTime))+"ms");
+                      } catch (Exception e) {
+                        Log.d("HANK", "Sleep Error");
+                      }
+                    }
+
+                    naluBuffer.clear();
+                    mediaExtractor.advance();
+                  } else {
+                    Log.d("HANK", "No Frame lo.");
+
+                    boolean bAutoLoop = false;
+                    if(bAutoLoop) {
+                      Log.d("HANK", "Enable Auto Loop");
+                      mediaExtractor.seekTo(0, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+                    } else {
+                      Log.d("HANK", "Auto Loop is disable");
+                      sendVideoInfo(channelIndex,"STOP");
+                      break;
+                    }
+                  }
+                }
+                sendVideoInfo(channelIndex,"STOP");
+              }
+            });
+            sendingThread = sendingThreads[thread_index];
+            break;
+          }
+        thread_index++;
+        if(thread_index==MAX_CHANNEL_NUMBER*2)
+        {
+          Log.e("HANK","no thread can use");
+          executor.execute(new Runnable() {
+            @Override
+            public void run() {
+              if (!isError) {
+                events.onPeerMessage("no Thread can use");
+                isError = true;
+              }
+            }
+          });
+          break;
+        }
+      }
+
+      if(sendingThread!=null) {
+        sendingThread.start();
+      }
+
+    } catch (Exception e) {
+      sendVideoInfo(channelIndex, "STOP");
+      Log.d("HANK", "some error " + e);
     }
   }
 
@@ -523,10 +607,10 @@ public class PeerConnectionClient {
       // Use for send Request
       DataChannel.Init dcInit = new DataChannel.Init();
       dcInit.id = channelCount++;
-      requestChannel = peerConnection.createDataChannel(REQUEST_CHANNEL_NAME,dcInit);
+      communicationChannel = peerConnection.createDataChannel(COMMUNICATION_CHANNEL_NAME,dcInit);
 
-      RequestDataChannelObserver requestDCObserver = new RequestDataChannelObserver(requestChannel,instance,executor,events);
-      requestChannel.registerObserver(requestDCObserver);
+      CommunicationChannelObserver communicationDCObserver = new CommunicationChannelObserver(communicationChannel,instance,executor,events);
+      communicationChannel.registerObserver(communicationDCObserver);
 
       // use for send video
       for(int i=0;i<MAX_CHANNEL_NUMBER;i++) {
@@ -543,7 +627,6 @@ public class PeerConnectionClient {
         audioDataChannels[i] = peerConnection.createDataChannel(AUDIO_CHANNEL_NAME+"("+i+")", dcInit);
         audioDataChannels[i].registerObserver(new DCObserver());
       }
-
     }
 
     // Set default WebRTC tracing and INFO libjingle logging.
@@ -668,7 +751,6 @@ public class PeerConnectionClient {
     });
   }
 
-
   private void reportError(final String errorMessage) {
     Log.e(TAG, "Peerconnection error: " + errorMessage);
     executor.execute(new Runnable() {
@@ -692,7 +774,7 @@ public class PeerConnectionClient {
     }
   }
 
-  // empty DCObserver
+  // empty DCObserver, using to non-recevied DataChannel
   public class DCObserver implements DataChannel.Observer {
 
     @Override
@@ -818,12 +900,12 @@ public class PeerConnectionClient {
         AudioDataChannelObserver audioDCObserver = new AudioDataChannelObserver(dc,executor,events);
         dc.registerObserver(audioDCObserver);
 
-      } else if(dc.label().startsWith(REQUEST_CHANNEL_NAME)) {
+      } else if(dc.label().startsWith(COMMUNICATION_CHANNEL_NAME)) {
         Log.d("HANK","onDataChannel : "+ dc.label());
 
-        requestChannel = dc;
-        RequestDataChannelObserver requestObserver = new RequestDataChannelObserver(dc,instance,executor,events);
-        requestChannel.registerObserver(requestObserver);
+        communicationChannel = dc;
+        CommunicationChannelObserver communicationChannelObserver = new CommunicationChannelObserver(dc,instance,executor,events);
+        communicationChannel.registerObserver(communicationChannelObserver);
 
       }
 
