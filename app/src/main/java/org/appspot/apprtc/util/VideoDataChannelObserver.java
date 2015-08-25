@@ -114,7 +114,7 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
                     Log.d("HANK", "os write fail");
                 }
             } else {
-                Log.e("HANK","bStart is enable, but received binary type buffer ?");
+                Log.e("HANK","bStart is not enable, but received binary type buffer ?");
             }
         }
         else
@@ -155,6 +155,12 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
                         mime = msgValue;
                         break;
                     case START:
+                        if(vt!=null) {
+                            vt.setStop();
+                            vt.interrupt();
+                            vt = null;
+                        }
+
 
                         for(int jj=0;jj<10;jj++) {
                             try {
@@ -187,6 +193,12 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
                         }
 
                         // Video Thread need input SurfaceView->surface, mime, width, height, sps, pps , inputstream is.
+                        executor.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                events.onPeerMessage("create video thread!");
+                            }
+                        });
                         vt = new VideoThread(surfaceView.getHolder().getSurface(),mime,width,height,sps,pps,is);
                         vt.start();
 
@@ -203,6 +215,8 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
                             try {
                                 os.close();
                                 is.close();
+                                writableByteChannel.close();
+                                writableByteChannel = null;
                                 os = null;
                                 is = null;
                             } catch (Exception e) {

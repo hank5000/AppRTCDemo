@@ -31,6 +31,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager.LayoutParams;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -316,23 +317,6 @@ public class CallActivity extends Activity
     disconnect();
   }
 
-  @Override
-  public void onCameraSwitch() {
-
-  }
-
-  @Override
-  public void onVideoScalingSwitch(ScalingType scalingType) {
-    //this.scalingType = scalingType;
-    //updateVideoView();
-  }
-
-  int a = 0;
-  public void onLiveView() {
-    logAndToast("Live View lo");
-    peerConnectionClient.sendVideo(a,"/mnt/sata/abc.mp4");
-    a++;
-  }
 
   // TODO: implement interface, that it is used by fragment_call
   public void onMessageSend() {
@@ -357,7 +341,7 @@ public class CallActivity extends Activity
   }
 
   public void onQueryFile() {
-
+    // TODO: send Query File Message.
   }
 
   public void onRequestVideo() {
@@ -368,23 +352,33 @@ public class CallActivity extends Activity
             .setView(v)
             .setPositiveButton("Send", new DialogInterface.OnClickListener() {
               public void onClick(DialogInterface dialog, int which) {
+                CheckBox ch0 = (CheckBox) (v.findViewById(R.id.checkBox));
+                CheckBox ch1 = (CheckBox) (v.findViewById(R.id.checkBox2));
+                CheckBox ch2 = (CheckBox) (v.findViewById(R.id.checkBox3));
+                CheckBox ch3 = (CheckBox) (v.findViewById(R.id.checkBox4));
+
+                boolean[] checkedArray = new boolean[4];
+
+                checkedArray[0] = ch0.isChecked();
+                checkedArray[1] = ch1.isChecked();
+                checkedArray[2] = ch2.isChecked();
+                checkedArray[3] = ch3.isChecked();
+
                 EditText filePath_et = (EditText) (v.findViewById(R.id.file_path));
-                EditText channel_et= (EditText) (v.findViewById(R.id.on_channel));
+                //EditText channel_et= (EditText) (v.findViewById(R.id.on_channel));
 
                 String filePath = filePath_et.getText().toString();
-                int channelNumber = Integer.valueOf(channel_et.getText().toString());
 
-                if(channelNumber>4 || channelNumber <0) {
-                  logAndToast("input the wrong channel, channel need lower than four");
-                }
-                else {
-                  peerConnectionClient.sendVideoRequest(channelNumber, filePath);
+                for (int channelIndex = 0; channelIndex < 4; channelIndex++) {
+                  if (checkedArray[channelIndex]) {
+                    peerConnectionClient.sendVideoRequest(channelIndex, filePath);
+                  }
                 }
               }
             })
-            .setNegativeButton("Cancel" , new DialogInterface.OnClickListener() {
+            .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
               public void onClick(DialogInterface dialog, int which) {
-              logAndToast("Cancel!");
+                logAndToast("Cancel!");
               }
             }).show();
   }
@@ -738,9 +732,33 @@ public class CallActivity extends Activity
   public void onPeerMessage(final String description) {
     logAndToast("Recevie : " + description);
   }
+
   @Override
   public void onShowReceivedMessage(final String description) {
     logAndToast(description);
+  }
+
+  @Override
+  public void onAuthenticationReceived() {
+    final View v = View.inflate(this,R.layout.authentication_list,null);
+    new AlertDialog.Builder(this)
+            .setTitle("Authentication Information")
+            .setView(v)
+            .setPositiveButton("Send", new DialogInterface.OnClickListener() {
+              public void onClick(DialogInterface dialog, int which) {
+                EditText username_et= (EditText) (v.findViewById(R.id.username));
+                EditText password_et= (EditText) (v.findViewById(R.id.password));
+
+                String username = username_et.getText().toString()+"";
+                String password = password_et.getText().toString()+"";
+                peerConnectionClient.sendAuthencationInformation(username, password);
+              }
+            })
+            .setNegativeButton("Cancel" , new DialogInterface.OnClickListener() {
+              public void onClick(DialogInterface dialog, int which) {
+                logAndToast("Cancel!");
+              }
+            }).show();
   }
 
 }

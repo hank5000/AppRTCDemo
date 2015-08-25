@@ -46,6 +46,7 @@ public class CallFragment extends Fragment {
     public void onMessageSend();
     public void onQueryFile();
     public void onRequestVideo();
+    public void onAuthenticationReceived();
   }
 
   @Override
