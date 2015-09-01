@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
+<RelativeLayout
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical">
+
+    <!--<TextView-->
+        <!--android:id="@+id/channel"-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:text="Channel Number "-->
+        <!--android:textSize="30sp" />-->
+
+    <NumberPicker
+
+        android:id="@+id/channel_picker"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"/>
+
+    <!--<TextView-->
+        <!--android:layout_below="@+id/channel"-->
+        <!--android:id="@+id/Camera_NickName"-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:text="Camera"-->
+        <!--android:textSize="30sp" />-->
+
+    <NumberPicker
+        android:layout_toRightOf="@+id/channel_picker"
+        android:id="@+id/camera_picker"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"/>
+
+
+</RelativeLayout>
+

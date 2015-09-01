@@ -8,6 +8,7 @@ import java.nio.ByteBuffer;
 
 import org.webrtc.DataChannel;
 
+import android.media.MediaFormat;
 import android.provider.MediaStore;
 import android.util.Log;
 
@@ -36,6 +37,34 @@ public class SendingThread extends Thread {
 
     @Override
     public void run() {
+
+        int Count = mediaExtractor.getTrackCount();
+        MediaFormat mf = null;
+        String mime = null;
+        for (int i = 0; i < Count; i++) {
+            mf = mediaExtractor.getTrackFormat(i);
+            mime = mf.getString(MediaFormat.KEY_MIME);
+            if (mime.subSequence(0, 5).equals("video")) {
+                mediaExtractor.selectTrack(i);
+                break;
+            }
+        }
+
+        pc.sendVideoInfo(channelIndex, "MIME", mf.getString(MediaFormat.KEY_MIME));
+        pc.sendVideoInfo(channelIndex, "Width", "" + mf.getInteger(MediaFormat.KEY_WIDTH));
+        pc.sendVideoInfo(channelIndex, "Height", "" + mf.getInteger(MediaFormat.KEY_HEIGHT));
+        ByteBuffer sps_b = mf.getByteBuffer("csd-0");
+        byte[] sps_ba = new byte[sps_b.remaining()];
+        sps_b.get(sps_ba);
+        pc.sendVideoInfo(channelIndex, "sps", pc.bytesToHex(sps_ba));
+
+        mf.getByteBuffer("csd-1");
+        ByteBuffer pps_b = mf.getByteBuffer("csd-1");
+        byte[] pps_ba = new byte[pps_b.remaining()];
+        pps_b.get(pps_ba);
+        pc.sendVideoInfo(channelIndex, "pps", pc.bytesToHex(pps_ba));
+        pc.sendVideoInfo(channelIndex, "Start");
+
         int NALUCount = 0;
         byte[] naluSizeByte = new byte[4];
         long startTime = 0;

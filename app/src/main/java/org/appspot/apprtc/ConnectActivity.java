@@ -32,10 +32,25 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.util.EntityUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Random;
 
@@ -79,6 +94,13 @@ public class ConnectActivity extends Activity {
   private ArrayList<String> roomList;
   private ArrayAdapter<String> adapter;
 
+  private boolean bUpdated = false;
+  private boolean bNoCreateSide = false;
+
+
+
+
+
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -113,17 +135,17 @@ public class ConnectActivity extends Activity {
 
     roomEditText = (EditText) findViewById(R.id.room_edittext);
     roomEditText.setOnEditorActionListener(
-      new TextView.OnEditorActionListener() {
-        @Override
-        public boolean onEditorAction(
-            TextView textView, int i, KeyEvent keyEvent) {
-          if (i == EditorInfo.IME_ACTION_DONE) {
-            addRoomButton.performClick();
-            return true;
-          }
-          return false;
-        }
-    });
+            new TextView.OnEditorActionListener() {
+              @Override
+              public boolean onEditorAction(
+                      TextView textView, int i, KeyEvent keyEvent) {
+                if (i == EditorInfo.IME_ACTION_DONE) {
+                  addRoomButton.performClick();
+                  return true;
+                }
+                return false;
+              }
+            });
     roomEditText.requestFocus();
 
     roomListView = (ListView) findViewById(R.id.room_listview);
@@ -138,6 +160,71 @@ public class ConnectActivity extends Activity {
     connectLoopbackButton =
         (ImageButton) findViewById(R.id.connect_loopback_button);
     connectLoopbackButton.setOnClickListener(connectListener);
+    connectLoopbackButton.setVisibility(View.INVISIBLE);
+
+    boolean bCreateChannelSide = sharedPref.getBoolean(
+            keyperfChannelCreateSide,
+            Boolean.valueOf(getString(R.string.pref_enable_channel_create_side_default)));
+
+    if(bCreateChannelSide) {
+
+
+      String roomId = Integer.toString((new Random()).nextInt(100000000));
+      roomEditText.setText(roomId);
+      connectToRoom(false,0);
+    } else {
+
+      Thread updateRoomIdThread = new Thread(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            bUpdated = false;
+            bNoCreateSide = false;
+            String method = "RoomGet";
+            String Username   = "Username";
+            String Password   = "Password";
+            String urlString = "http://122.147.15.216/"+method+"?"+Username+"=HankWu&"+Password+"=123456";
+
+            URL url = new URL(urlString);
+            URLConnection urlConnection = url.openConnection();
+            urlConnection.setRequestProperty("Connection", "close");
+            HttpURLConnection httpConn = (HttpURLConnection)urlConnection;
+            InputStream is;
+
+            if (httpConn.getResponseCode() >= 400) {
+              is = httpConn.getErrorStream();
+            } else {
+              is = httpConn.getInputStream();
+            }
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+            String line = "";
+            if((line = reader.readLine()) != null) {
+              Log.d("HANK", "RoomId:" + line);
+              final String RoomId = line;
+
+              runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                  EditText roomId_ed = (EditText) findViewById(R.id.room_edittext);
+                  roomId_ed.setText(RoomId, TextView.BufferType.EDITABLE);
+
+                }
+              });
+            }
+
+          } catch (IOException e) {
+            Log.e("HANK", "open connection fail"+e);
+
+          }
+        }
+      });
+
+
+      updateRoomIdThread.start();
+    }
+
+
 
     // If an implicit VIEW intent is launching the app, go directly to that URL.
     final Intent intent = getIntent();
@@ -208,6 +295,15 @@ public class ConnectActivity extends Activity {
       roomListView.requestFocus();
       roomListView.setItemChecked(0, true);
     }
+    boolean bCreateChannelSide = sharedPref.getBoolean(
+            keyperfChannelCreateSide,
+            Boolean.valueOf(getString(R.string.pref_enable_channel_create_side_default)));
+    if(bCreateChannelSide) {
+      String roomId = Integer.toString((new Random()).nextInt(100000000));
+      roomEditText.setText(roomId);
+      connectToRoom(false, 0);
+    }
+
   }
 
   @Override
@@ -224,12 +320,65 @@ public class ConnectActivity extends Activity {
   private final OnClickListener connectListener = new OnClickListener() {
     @Override
     public void onClick(View view) {
-      boolean loopback = false;
-      if (view.getId() == R.id.connect_loopback_button) {
-        loopback = true;
-      }
+
       commandLineRun = false;
-      connectToRoom(loopback, 0);
+      bUpdated = false;
+
+      Thread updateRoomIdThread = new Thread(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            bNoCreateSide = false;
+            bUpdated = false;
+            String method = "RoomGet";
+            String Username   = "Username";
+            String Password   = "Password";
+            String urlString = "http://122.147.15.216/"+method+"?"+Username+"=HankWu&"+Password+"=123456";
+
+            URL url = new URL(urlString);
+            URLConnection urlConnection = url.openConnection();
+            urlConnection.setRequestProperty("Connection", "close");
+            HttpURLConnection httpConn = (HttpURLConnection)urlConnection;
+            InputStream is;
+
+            if (httpConn.getResponseCode() >= 400) {
+              is = httpConn.getErrorStream();
+            } else {
+              is = httpConn.getInputStream();
+            }
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+            String line = "";
+            if((line = reader.readLine()) != null) {
+              Log.d("HANK", "RoomId:" + line);
+              final String RoomId = line;
+              if(RoomId.equalsIgnoreCase("null")) {
+                bNoCreateSide = true;
+              }
+              runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                  EditText roomId_ed = (EditText) findViewById(R.id.room_edittext);
+                  roomId_ed.setText(RoomId, TextView.BufferType.EDITABLE);
+                  bUpdated = true;
+
+                  if(bNoCreateSide) {
+                    Log.e("HANK","NO DS2");
+                  } else {
+                    connectToRoom(false, 0);
+                  }
+                }
+              });
+            }
+
+          } catch (IOException e) {
+            Log.e("HANK", "open connection fail"+e);
+
+          }
+        }
+      });
+      updateRoomIdThread.start();
+
     }
   };
 
@@ -404,6 +553,56 @@ public class ConnectActivity extends Activity {
   private final OnClickListener removeRoomListener = new OnClickListener() {
     @Override
     public void onClick(View view) {
+
+      Thread updateRoomIdThread = new Thread(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            bUpdated = false;
+            bNoCreateSide = false;
+            String method = "RoomGet";
+            String Username   = "Username";
+            String Password   = "Password";
+            String urlString = "http://122.147.15.216/"+method+"?"+Username+"=HankWu&"+Password+"=123456";
+
+            URL url = new URL(urlString);
+            URLConnection urlConnection = url.openConnection();
+            urlConnection.setRequestProperty("Connection", "close");
+            HttpURLConnection httpConn = (HttpURLConnection)urlConnection;
+            InputStream is;
+
+            if (httpConn.getResponseCode() >= 400) {
+              is = httpConn.getErrorStream();
+            } else {
+              is = httpConn.getInputStream();
+            }
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+            String line = "";
+            if((line = reader.readLine()) != null) {
+              Log.d("HANK", "RoomId:" + line);
+              final String RoomId = line;
+
+              runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                  EditText roomId_ed = (EditText) findViewById(R.id.room_edittext);
+                  roomId_ed.setText(RoomId, TextView.BufferType.EDITABLE);
+
+                }
+              });
+            }
+
+          } catch (IOException e) {
+            Log.e("HANK", "open connection fail"+e);
+
+          }
+        }
+      });
+
+
+      updateRoomIdThread.start();
+
       String selectedRoom = getSelectedItem();
       if (selectedRoom != null) {
         adapter.remove(selectedRoom);

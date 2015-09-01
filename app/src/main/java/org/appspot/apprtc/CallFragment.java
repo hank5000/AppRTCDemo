@@ -63,7 +63,7 @@ public class CallFragment extends Fragment {
     messageButton =
         (ImageButton) controlView.findViewById(R.id.button_call_message);
     fileButton =
-        (ImageButton) controlView.findViewById(R.id.button_call_video);
+        (ImageButton) controlView.findViewById(R.id.button_call_file);
     reqVideoButton =
             (ImageButton) controlView.findViewById(R.id.button_call_video);
 

@@ -103,45 +103,47 @@ public class VideoThread extends Thread {
                         }
                     }
                     collectLength = rawDataCollectBuffer.position();
+                    if(collectLength>0) {
+                        rawDataCollectBuffer.flip();
 
-                    rawDataCollectBuffer.flip();
+                        int nextNALULength = (rawDataCollectBuffer.get(0) << 0) & 0x000000ff | (rawDataCollectBuffer.get(1) << 8) & 0x0000ff00 |
+                                (rawDataCollectBuffer.get(2) << 16) & 0x00ff0000 | (rawDataCollectBuffer.get(3) << 24) & 0xff000000;
 
-                    int nextNALULength = (rawDataCollectBuffer.get(0)<<0)&0x000000ff | (rawDataCollectBuffer.get(1)<<8)&0x0000ff00 |
-                            (rawDataCollectBuffer.get(2)<<16)&0x00ff0000| (rawDataCollectBuffer.get(3)<<24)&0xff000000;
+                        if ((nextNALULength + 4/*nalu length number use 4 byte*/) <= collectLength
+                                && (collectLength > 0) && (nextNALULength > 0)) {
 
-                    if( (nextNALULength + 4/*nalu length number use 4 byte*/)<= collectLength
-                            && (collectLength >0) && (nextNALULength >0)) {
+                            // Log.d("HANK", "Get NALU length : " + nextNALULength );
 
-                        // Log.d("HANK", "Get NALU length : " + nextNALULength );
+                            // remove NALU length number : 4 byte
+                            rawDataCollectBuffer.get();
+                            rawDataCollectBuffer.get();
+                            rawDataCollectBuffer.get();
+                            rawDataCollectBuffer.get();
 
-                        // remove NALU length number : 4 byte
-                        rawDataCollectBuffer.get();rawDataCollectBuffer.get();rawDataCollectBuffer.get();rawDataCollectBuffer.get();
+                            // get full NALU raw data : nextNALULength byte
+                            rawDataCollectBuffer.get(dst, 0, nextNALULength);
+                            rawDataCollectBuffer.compact();
 
-                        // get full NALU raw data : nextNALULength byte
-                        rawDataCollectBuffer.get(dst, 0, nextNALULength);
-                        rawDataCollectBuffer.compact();
+                            // put NALU raw data into inputBuffers[index]
+                            ByteBuffer buffer = inputBuffers[inIndex];
+                            buffer.clear();
+                            buffer.put(dst, 0, nextNALULength);
 
-                        // put NALU raw data into inputBuffers[index]
-                        ByteBuffer buffer = inputBuffers[inIndex];
-                        buffer.clear();
-                        buffer.put(dst, 0, nextNALULength);
+                            // decode a NALU
+                            decoder.queueInputBuffer(inIndex, 0, nextNALULength, j++, 0);
 
-                        // decode a NALU
-                        decoder.queueInputBuffer(inIndex, 0, nextNALULength, j++, 0);
-
-//                            // just a frame count
-//                            frameCount++;
-//                            Log.d("HANK","Receive Frame Count : "+frameCount);
-                        break;
-                    }
-                    else
-                    {
-                        rawDataCollectBuffer.compact();
-                        try {
-                            sleep(10);
-                        } catch (InterruptedException e) {
-                            // TODO Auto-generated catch block
-                            e.printStackTrace();
+                            //                            // just a frame count
+                            //                            frameCount++;
+                            //                            Log.d("HANK","Receive Frame Count : "+frameCount);
+                            break;
+                        } else {
+                            rawDataCollectBuffer.compact();
+                            try {
+                                sleep(10);
+                            } catch (InterruptedException e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
                         }
                     }
                 }

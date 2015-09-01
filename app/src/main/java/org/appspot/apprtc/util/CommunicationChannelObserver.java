@@ -20,11 +20,21 @@ public class CommunicationChannelObserver implements DataChannel.Observer {
     public final static String REQUEST_USERNAME = "USERNAME";
     public final static String REQUEST_PASSWORD = "PASSWORD";
 
+    public final static String REQUEST_LIVEVIEW_INFO = "REQUEST_LIVEVIEW_INFO";
+    public final static String FEEDBACK_LIVEVIEW_INFO = "FEEDBACK_LIVEVIEW_INFO";
+
+    public final static String REQUEST_LIVEVIEW_DATA = "REQUEST_LIVEVIEW_DATA";
+    public final static String REQUEST_LIVEVIEW_NICKNAME = "REQUEST_LIVEVIEW_NICKNAME";
 
     public final static String getRequestVideoMessage(int onChannel, String filePath) {
         String resultMessage = REQUEST_VIDEO_PREFIX + ":" +
                 REQUEST_VIDEO_ON_CHANNEL_PREFIX + ":" + onChannel + ":" +
                 REQUEST_VIDEO_FILE_PATH_PREFIX + ":" + filePath;
+        return resultMessage;
+    }
+
+    public final static String getRequestLiveViewMessage(int onChannel, String nickName) {
+        String resultMessage = REQUEST_LIVEVIEW_DATA + ":" + onChannel +":" + nickName;
         return resultMessage;
     }
 
@@ -58,7 +68,7 @@ public class CommunicationChannelObserver implements DataChannel.Observer {
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    peerConnectionClient.requestAuthen();
+                    peerConnectionClient.sendRequestAuthentication();
                 }
             });
         }
@@ -76,7 +86,6 @@ public class CommunicationChannelObserver implements DataChannel.Observer {
 
             // the device which bPass and bCreateSide are true can receive VIDEO REQUEST
             if (peerConnectionClient.isPass() && peerConnectionClient.isCreateSide()) {
-
 
                 if (command.startsWith(REQUEST_VIDEO_PREFIX)) {
                     // REQUEST_VIDEO_PREFIX + ":" +REQUEST_VIDEO_ON_CHANNEL_PREFIX + ":" + onChannel + ":" +REQUEST_VIDEO_FILE_PATH_PREFIX  + ":" + filePath;
@@ -107,6 +116,21 @@ public class CommunicationChannelObserver implements DataChannel.Observer {
                     }
                 }
 
+                if(command.startsWith(REQUEST_LIVEVIEW_DATA)) {
+                    String[] commands = command.split(":");
+                    if(commands.length>2) {
+                        final int onChannel = Integer.valueOf(commands[1]);
+                        final String nickName = commands[2];
+                        executor.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                events.onPeerMessage("Send LiveView : "+ nickName + " on Channel(" + onChannel +"), Remotely");
+                                peerConnectionClient.sendLiveViewData(onChannel,nickName);
+                            }
+                        });
+                    }
+
+                }
             }
 
             /// MESSAGE PART START ///
@@ -121,6 +145,31 @@ public class CommunicationChannelObserver implements DataChannel.Observer {
             }
             /// MESSAGE PART END ///
 
+            /// LIVEVIEW PART START ///
+            if(command.startsWith(REQUEST_LIVEVIEW_INFO)) {
+                peerConnectionClient.sendLiveViewInfo();
+            }
+
+            if(command.startsWith(FEEDBACK_LIVEVIEW_INFO)) {
+                Log.d("HANK", "GET FEEDBACK LIVEVIEW INFO");
+                String[] commands = command.split(":");
+                peerConnectionClient.getLiveViewInfo().reset();
+                String cameraInfo = "Camera List :";
+                for(int i=1;i<commands.length;i++) {
+                    peerConnectionClient.getLiveViewInfo().add(commands[i]);
+                    Log.d("HANK", "LiveViewInfo :" + commands[i]);
+                    cameraInfo = cameraInfo +" "+commands[i];
+                }
+                final String message_CameraInfo = cameraInfo;
+                executor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        events.onShowReceivedMessage(message_CameraInfo);
+                    }
+                });
+            }
+
+            /// LIVEVIEW PART END ///
 
             /// AUTHENCATION PART START ///
             if (command.startsWith(REQUEST_AUTHENTICATION)) {
@@ -154,10 +203,11 @@ public class CommunicationChannelObserver implements DataChannel.Observer {
                         executor.execute(new Runnable() {
                             @Override
                             public void run() {
-                                events.onShowReceivedMessage("Received :"+showMessage);
+                                events.onShowReceivedMessage("Received :" + showMessage);
                             }
                         });
                         peerConnectionClient.sendMessage("Authentication Pass, you can send request lo.");
+                        peerConnectionClient.sendLiveViewInfo();
                     } else {
                         peerConnectionClient.sendMessage("Authentication fail, please input correct username and password");
                     }

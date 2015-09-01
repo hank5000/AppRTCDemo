@@ -43,7 +43,7 @@
 
         <ImageButton
            android:id="@+id/button_call_file"
-           android:background="@drawable/file"
+           android:background="@drawable/camera_white"
            android:contentDescription="@string/disconnect_call"
            android:layout_width="48dp"
            android:layout_height="48dp"/>

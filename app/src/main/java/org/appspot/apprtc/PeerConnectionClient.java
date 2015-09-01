@@ -20,7 +20,9 @@ import android.view.SurfaceView;
 
 import org.appspot.apprtc.AppRTCClient.SignalingParameters;
 import org.appspot.apprtc.util.AudioDataChannelObserver;
+import org.appspot.apprtc.util.LiveViewInfo;
 import org.appspot.apprtc.util.LooperExecutor;
+import org.appspot.apprtc.util.SendingLiveViewThread;
 import org.appspot.apprtc.util.SendingThread;
 import org.appspot.apprtc.util.VideoDataChannelObserver;
 import org.webrtc.DataChannel;
@@ -71,15 +73,19 @@ public class PeerConnectionClient {
   // use for data channel video
   private SurfaceView liveViewSurfaces[];
 
-  private final int MAX_CHANNEL_NUMBER = 4;
+  public final int MAX_CHANNEL_NUMBER = 1;
 
   public DataChannel communicationChannel = null;
   private DataChannel[] videoDataChannels = new DataChannel[MAX_CHANNEL_NUMBER];
   private DataChannel[] audioDataChannels = new DataChannel[MAX_CHANNEL_NUMBER];
   public SendingThread[] sendingThreads = new SendingThread[MAX_CHANNEL_NUMBER*2];
+  public SendingLiveViewThread[] sendingLiveViewThreads = new SendingLiveViewThread[MAX_CHANNEL_NUMBER*2];
+  public VideoDataChannelObserver[] videoDataChannelObservers = new VideoDataChannelObserver[MAX_CHANNEL_NUMBER];
+  public AudioDataChannelObserver[] audioDataChannelObservers = new AudioDataChannelObserver[MAX_CHANNEL_NUMBER];
+
+
+  public SendingLiveViewThread sendingLiveView = null;
   private CommunicationChannelObserver communicationChannelObserver = null;
-
-
 
   public String User = "default_user";
   public String Pass = "default_password";
@@ -88,9 +94,17 @@ public class PeerConnectionClient {
   public boolean isAutoInputAuthentication() {
     return bAutoInputAuthentication;
   }
+  private LiveViewInfo liveViewInfo = null;
 
   public boolean isPass() {
     return bPass;
+  }
+
+  public void setLiveViewInfo(LiveViewInfo lvi) {
+    liveViewInfo = lvi;
+  }
+  public LiveViewInfo getLiveViewInfo() {
+    return liveViewInfo;
   }
 
   public boolean checkAuthencation(String user, String pass) {
@@ -106,9 +120,11 @@ public class PeerConnectionClient {
         sendingThreads[i].stopThread();
         sendingThreads[i].interrupt();
         sendingThreads[i] = null;
-        if(sendingThreads[i]!=null) {
-          sendingThreads[i] = null;
-        }
+      }
+      if(sendingLiveViewThreads[i]!=null) {
+        sendingLiveViewThreads[i].stopThread();
+        sendingLiveViewThreads[i].interrupt();
+        sendingLiveViewThreads[i] = null;
       }
     }
   }
@@ -129,14 +145,24 @@ public class PeerConnectionClient {
     return audioDataChannels[index];
   }
 
+  public void sendLiveViewData(int channel, String nickname) {
+    final String ip_address = liveViewInfo.getIpAddress(nickname);
+    sendingLiveView = new SendingLiveViewThread(this,channel,ip_address);
+    sendingLiveViewThreads[channel] = sendingLiveView;
+    sendingLiveView.start();
+  }
+
   public void stopChannelSending(int index) {
     if(sendingThreads[index]!=null) {
       sendingThreads[index].stopThread();
       sendingThreads[index].interrupt();
       sendingThreads[index] = null;
-      if(sendingThreads[index]!=null) {
-        sendingThreads[index] = null;
-      }
+    }
+
+    if(sendingLiveViewThreads[index]!=null) {
+      sendingLiveViewThreads[index].stopThread();
+      sendingLiveViewThreads[index].interrupt();
+      sendingLiveViewThreads[index] = null;
     }
   }
 
@@ -165,6 +191,11 @@ public class PeerConnectionClient {
   // remote peer after both local and remote description are set.
   private LinkedList<IceCandidate> queuedRemoteCandidates;
   private PeerConnectionEvents events;
+
+  public PeerConnectionEvents getPeerConnectionEvents() {
+    return events;
+  }
+
   private boolean isInitiator;
   private SessionDescription localSdp; // either offer or answer SDP
 
@@ -180,7 +211,6 @@ public class PeerConnectionClient {
    * Peer connection parameters.
    */
   public static class PeerConnectionParameters {
-
 
     public final boolean cpuOveruseDetection;
     public final boolean bEnableChatRoom;
@@ -251,6 +281,7 @@ public class PeerConnectionClient {
 
     for(int i=0;i<MAX_CHANNEL_NUMBER*2;i++) {
       sendingThreads[i] = null;
+      sendingLiveViewThreads[i] = null;
     }
   }
 
@@ -366,11 +397,38 @@ public class PeerConnectionClient {
     }
   }
 
-  public void requestAuthen() {
+  public void sendLiveViewInfo() {
+    final DataChannel outChannel = communicationChannel;
+
+    String data = CommunicationChannelObserver.FEEDBACK_LIVEVIEW_INFO;
+    for(int i=0;i<8;i++) {
+      if(!liveViewInfo.getNickNameByIndex(i).equalsIgnoreCase("")) {
+        data = data +":"+liveViewInfo.getNickNameByIndex(i);
+      }
+    }
+    ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
+    if(outChannel!=null) {
+      Log.d("HANK","SendMessage");
+      outChannel.send(new DataChannel.Buffer(buffer,false));
+    }
+  }
+
+  public void sendRequestLiveViewInfo() {
+    final DataChannel outChannel = communicationChannel;
+
+    String data = CommunicationChannelObserver.REQUEST_LIVEVIEW_INFO;
+    ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
+    if(outChannel!=null) {
+      Log.d("HANK","SendMessage");
+      outChannel.send(new DataChannel.Buffer(buffer,false));
+    }
+  }
+
+  public void sendRequestAuthentication() {
     String data = CommunicationChannelObserver.REQUEST_AUTHENTICATION;
     final DataChannel outChannel = communicationChannel;
     ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
-    Log.d("HANK","requestAuthen");
+    Log.d("HANK","sendRequestAuthentication");
     outChannel.send(new DataChannel.Buffer(buffer,false));
 
   }
@@ -383,11 +441,21 @@ public class PeerConnectionClient {
     outChannel.send(new DataChannel.Buffer(buffer, false));
   }
 
-
   public void sendVideoRequest(int onchannel,String videoPath) {
     final DataChannel outChannel = communicationChannel;
 
     String data = CommunicationChannelObserver.getRequestVideoMessage(onchannel,videoPath);
+    ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
+    if(outChannel!=null) {
+      Log.d("HANK","SendMessage");
+      outChannel.send(new DataChannel.Buffer(buffer,false));
+    }
+  }
+
+  public void sendLiveViewRequest(int onchannel,String nickName) {
+    final DataChannel outChannel = communicationChannel;
+
+    String data = CommunicationChannelObserver.getRequestLiveViewMessage(onchannel, nickName);
     ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
     if(outChannel!=null) {
       Log.d("HANK","SendMessage");
@@ -489,34 +557,8 @@ public class PeerConnectionClient {
 
     final DataChannel outChannel = videoDataChannels[channelIndex];
     try {
-      final MediaExtractor mediaExtractor = new MediaExtractor();
+      MediaExtractor mediaExtractor = new MediaExtractor();
       mediaExtractor.setDataSource(videoPath);
-      int Count = mediaExtractor.getTrackCount();
-      MediaFormat mf = null;
-      String mime = null;
-      for (int i = 0; i < Count; i++) {
-        mf = mediaExtractor.getTrackFormat(i);
-        mime = mf.getString(MediaFormat.KEY_MIME);
-        if (mime.subSequence(0, 5).equals("video")) {
-          mediaExtractor.selectTrack(i);
-          break;
-        }
-      }
-
-      sendVideoInfo(channelIndex,"MIME", mf.getString(MediaFormat.KEY_MIME));
-      sendVideoInfo(channelIndex,"Width", "" + mf.getInteger(MediaFormat.KEY_WIDTH));
-      sendVideoInfo(channelIndex,"Height", "" + mf.getInteger(MediaFormat.KEY_HEIGHT));
-      ByteBuffer sps_b = mf.getByteBuffer("csd-0");
-      byte[] sps_ba = new byte[sps_b.remaining()];
-      sps_b.get(sps_ba);
-      sendVideoInfo(channelIndex,"sps", bytesToHex(sps_ba));
-
-      mf.getByteBuffer("csd-1");
-      ByteBuffer pps_b = mf.getByteBuffer("csd-1");
-      byte[] pps_ba = new byte[pps_b.remaining()];
-      pps_b.get(pps_ba);
-      sendVideoInfo(channelIndex, "pps", bytesToHex(pps_ba));
-      sendVideoInfo(channelIndex,"Start");
 
       sendingThreads[threadIndex] = new SendingThread(this,mediaExtractor,threadIndex);
       sendingThreads[threadIndex].start();
@@ -527,6 +569,7 @@ public class PeerConnectionClient {
       Log.d("HANK", "some error " + e);
     }
   }
+
 
   /// DATA CHANNEL SEND FUNCTION -OVER- ///
 
@@ -843,7 +886,8 @@ public class PeerConnectionClient {
         int channelNumber = Integer.valueOf(dc.label().replaceAll("[^0-9]+",""));
 
         videoDataChannels[channelNumber] = dc;
-        VideoDataChannelObserver videoDCObserver = new VideoDataChannelObserver(dc ,liveViewSurfaces[channelNumber],executor,events);
+        VideoDataChannelObserver videoDCObserver = new VideoDataChannelObserver(dc ,liveViewSurfaces[channelNumber],executor,getInstance());
+        videoDataChannelObservers[channelNumber] = videoDCObserver;
         dc.registerObserver(videoDCObserver);
 
       } else if(dc.label().startsWith(AUDIO_CHANNEL_NAME)) {
@@ -853,6 +897,7 @@ public class PeerConnectionClient {
 
         audioDataChannels[channelNumber] = dc;
         AudioDataChannelObserver audioDCObserver = new AudioDataChannelObserver(dc,executor,events);
+        audioDataChannelObservers[channelNumber] = audioDCObserver;
         dc.registerObserver(audioDCObserver);
 
       } else if(dc.label().startsWith(COMMUNICATION_CHANNEL_NAME)) {
@@ -862,7 +907,6 @@ public class PeerConnectionClient {
         communicationChannelObserver = new CommunicationChannelObserver(dc,instance,executor,events);
         communicationChannel.registerObserver(communicationChannelObserver);
       }
-
     }
 
     @Override

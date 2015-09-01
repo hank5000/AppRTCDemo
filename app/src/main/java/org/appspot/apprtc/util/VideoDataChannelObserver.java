@@ -29,16 +29,25 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
     private PeerConnectionClient.PeerConnectionEvents events;
     private SurfaceView surfaceView;
     private DataChannel dataChannel;
+    private PeerConnectionClient pcc;
+    private int channelNumber = 0;
 
-    public  VideoDataChannelObserver(DataChannel dc, SurfaceView surf, LooperExecutor exe, PeerConnectionClient.PeerConnectionEvents eve) {
+    public  VideoDataChannelObserver(DataChannel dc, SurfaceView surf, LooperExecutor exe, PeerConnectionClient pc) {
         this.dataChannel = dc;
         this.surfaceView = surf;
-        this.events = eve;
+        this.pcc = pc;
+        this.events = pc.getPeerConnectionEvents();
         this.executor = exe;
+        this.channelNumber = Integer.valueOf(dc.label().replaceAll("[^0-9]+",""));
+
     }
 
     boolean bLiveView = false;
     boolean bStart    = false;
+
+    public boolean isIdle() {
+        return !bStart;
+    }
 
     int     width    = -1;
     int     height   = -1;
@@ -197,6 +206,7 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
                             @Override
                             public void run() {
                                 events.onPeerMessage("create video thread!");
+
                             }
                         });
                         vt = new VideoThread(surfaceView.getHolder().getSurface(),mime,width,height,sps,pps,is);
@@ -206,6 +216,7 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
                         videoMsg = videoMsg + "START,"+width+"x"+height+"("+mime+")";
                         bShowToast = true;
                         bStart = true;
+
                         break;
                     case STOP:
                         if(bStart) {
@@ -227,6 +238,9 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
 
                             vt = null;
                             bShowToast = true;
+
+                            pcc.getLiveViewInfo().removeOnChannel(channelNumber);
+
                         } else {
                             Log.d("HANK","It is already stop lo.");
                         }
