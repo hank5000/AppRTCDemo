@@ -51,9 +51,10 @@ public class AudioOut {
         mAudioTrack = null;
     }
 
-    public void playBuffer(short[] audioData, int bufferSize, int nbSamples) {
+    public void playBuffer(byte[] audioData, int bufferSize, int nbSamples) {
 //        Log.d(TAG, "Buffer size: " + bufferSize + " nb samples: " + nbSamples);
-        if (mAudioTrack.write(audioData, 0, 505) != bufferSize)
+
+        if (mAudioTrack.write(audioData, 0, bufferSize) != bufferSize)
         {
             Log.w(TAG, "Could not write all the samples to the audio device");
         }

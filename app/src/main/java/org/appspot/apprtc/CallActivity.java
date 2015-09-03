@@ -105,7 +105,6 @@ public class CallActivity extends Activity
   public static final String EXTRA_CHAT_ROOM = "test.via.hank.CHAT_ROOM";
   public static final String EXTRA_CREATE_SIDE = "test.via.hank.CREATE_SIDE";
 
-
   public static final String EXTRA_CMDLINE =
       "org.appspot.apprtc.CMDLINE";
   public static final String EXTRA_RUNTIME =
@@ -242,34 +241,33 @@ public class CallActivity extends Activity
     Thread a = new Thread(new Runnable() {
       @Override
       public void run() {
-        if(bCreateSide) {
+
           // TODO: Register room number to via server
           try {
-            String createRoom = "RoomCreate";
+            String method = "";
+            if(bCreateSide) {
+              method = "RoomCreate";
+            } else {
+              method = "RoomRemove";
+            }
             String Username   = "Username";
             String Password   = "Password";
             String RoomId     = "RoomId";
-            String urlString = "http://122.147.15.216/"+createRoom+"?"+Username+"=HankWu&"+Password+"=123456&"+RoomId+"="+sendHttpRoomId;
+            String urlString = "http://122.147.15.216/"+method+"?"+Username+"=HankWu&"+Password+"=123456&"+RoomId+"="+sendHttpRoomId;
             URL url = new URL(urlString);
             URLConnection conn = url.openConnection();
-            Log.e("HANK", "connect success!");
+            Log.e("HANK", "connect success! "+urlString);
             InputStream is = conn.getInputStream();
 
           } catch (IOException e) {
             Log.e("HANK", "open connection fail "+ e);
 
           }
-        }
       }
     });
     a.start();
 
     createPeerConnectionFactory();
-
-
-
-
-
 
     int j = 0;
     // Create Live View

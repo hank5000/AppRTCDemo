@@ -85,11 +85,11 @@ public class VideoThread extends Thread {
         int collectLength;
         int frameCount = 0;
         int j = 0;
-        while (!Thread.interrupted()) {
+        while (!Thread.interrupted() && bStart) {
             int inIndex = decoder.dequeueInputBuffer(10000);
             if (inIndex > 0) {
 
-                while (!Thread.interrupted()) {
+                while (!Thread.interrupted() && bStart) {
                     try {
                         readSize = is.read(inputStreamTmp);
                         if(readSize>0) {
@@ -130,7 +130,7 @@ public class VideoThread extends Thread {
                             buffer.put(dst, 0, nextNALULength);
 
                             // decode a NALU
-                            decoder.queueInputBuffer(inIndex, 0, nextNALULength, j++, 0);
+                            decoder.queueInputBuffer(inIndex, 0, nextNALULength, 0, 0);
 
                             //                            // just a frame count
                             //                            frameCount++;
@@ -150,7 +150,7 @@ public class VideoThread extends Thread {
             }
 
 
-            int outIndex = decoder.dequeueOutputBuffer(info, 10000);
+            int outIndex = decoder.dequeueOutputBuffer(info, 100000);
             switch (outIndex) {
                 case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
                     Log.d("DecodeActivity", "INFO_OUTPUT_BUFFERS_CHANGED");

@@ -22,6 +22,7 @@ import org.appspot.apprtc.AppRTCClient.SignalingParameters;
 import org.appspot.apprtc.util.AudioDataChannelObserver;
 import org.appspot.apprtc.util.LiveViewInfo;
 import org.appspot.apprtc.util.LooperExecutor;
+import org.appspot.apprtc.util.SendingLiveViewAudioThread;
 import org.appspot.apprtc.util.SendingLiveViewThread;
 import org.appspot.apprtc.util.SendingThread;
 import org.appspot.apprtc.util.VideoDataChannelObserver;
@@ -79,12 +80,14 @@ public class PeerConnectionClient {
   private DataChannel[] videoDataChannels = new DataChannel[MAX_CHANNEL_NUMBER];
   private DataChannel[] audioDataChannels = new DataChannel[MAX_CHANNEL_NUMBER];
   public SendingThread[] sendingThreads = new SendingThread[MAX_CHANNEL_NUMBER*2];
-  public SendingLiveViewThread[] sendingLiveViewThreads = new SendingLiveViewThread[MAX_CHANNEL_NUMBER*2];
+  public SendingLiveViewThread[] sendingLiveViewThreads = new SendingLiveViewThread[MAX_CHANNEL_NUMBER];
+  public SendingLiveViewAudioThread[] sendingLiveViewAudioThreads = new SendingLiveViewAudioThread[MAX_CHANNEL_NUMBER];
   public VideoDataChannelObserver[] videoDataChannelObservers = new VideoDataChannelObserver[MAX_CHANNEL_NUMBER];
   public AudioDataChannelObserver[] audioDataChannelObservers = new AudioDataChannelObserver[MAX_CHANNEL_NUMBER];
 
 
   public SendingLiveViewThread sendingLiveView = null;
+  public SendingLiveViewAudioThread sendingLiveViewAudio = null;
   private CommunicationChannelObserver communicationChannelObserver = null;
 
   public String User = "default_user";
@@ -121,12 +124,22 @@ public class PeerConnectionClient {
         sendingThreads[i].interrupt();
         sendingThreads[i] = null;
       }
+    }
+    for(int i=0;i<MAX_CHANNEL_NUMBER;i++) {
       if(sendingLiveViewThreads[i]!=null) {
         sendingLiveViewThreads[i].stopThread();
         sendingLiveViewThreads[i].interrupt();
         sendingLiveViewThreads[i] = null;
       }
+
+      if(sendingLiveViewAudioThreads[i]!=null) {
+        sendingLiveViewAudioThreads[i].stopThread();
+        sendingLiveViewAudioThreads[i].interrupt();
+        sendingLiveViewAudioThreads[i] = null;
+      }
     }
+
+
   }
 
   public DataChannel getVideoDataChannel(int index) {
@@ -149,7 +162,12 @@ public class PeerConnectionClient {
     final String ip_address = liveViewInfo.getIpAddress(nickname);
     sendingLiveView = new SendingLiveViewThread(this,channel,ip_address);
     sendingLiveViewThreads[channel] = sendingLiveView;
+    sendingLiveViewAudio = new SendingLiveViewAudioThread(this,channel,ip_address);
+    sendingLiveViewAudioThreads[channel] = sendingLiveViewAudio;
+
+    sendingLiveViewAudio.start();
     sendingLiveView.start();
+
   }
 
   public void stopChannelSending(int index) {
@@ -164,6 +182,14 @@ public class PeerConnectionClient {
       sendingLiveViewThreads[index].interrupt();
       sendingLiveViewThreads[index] = null;
     }
+
+    if(sendingLiveViewAudioThreads[index]!=null) {
+      sendingLiveViewAudioThreads[index].stopThread();
+      sendingLiveViewAudioThreads[index].interrupt();
+      sendingLiveViewAudioThreads[index] = null;
+    }
+
+
   }
 
   public DataChannel getCommunicationChannel() {
@@ -279,9 +305,11 @@ public class PeerConnectionClient {
     // created on the same thread as previously destroyed factory.
     executor.requestStart();
 
-    for(int i=0;i<MAX_CHANNEL_NUMBER*2;i++) {
+    for(int i=0;i<MAX_CHANNEL_NUMBER;i++) {
       sendingThreads[i] = null;
+      sendingThreads[i+MAX_CHANNEL_NUMBER] = null;
       sendingLiveViewThreads[i] = null;
+      sendingLiveViewAudioThreads[i] = null;
     }
   }
 
@@ -547,6 +575,14 @@ public class PeerConnectionClient {
     String data = VideoDataChannelObserver.VIDEO_PREFIX+":"+key;
     ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
     Log.d("HANK", "Send Video Info " + data);
+    outChannel.send(new DataChannel.Buffer(buffer, false));
+  }
+
+  public void sendAudioInfo(final int channelIndex,String key) {
+    DataChannel outChannel = audioDataChannels[channelIndex];
+    String data = AudioDataChannelObserver.AUDIO_PREFIX+":"+key;
+    ByteBuffer buffer = ByteBuffer.wrap(data.getBytes());
+    Log.d("HANK", "Send Audio Info " + data);
     outChannel.send(new DataChannel.Buffer(buffer, false));
   }
 

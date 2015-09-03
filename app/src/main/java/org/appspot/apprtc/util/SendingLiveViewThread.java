@@ -19,7 +19,6 @@ import android.net.LocalSocketAddress;
  */
 public class SendingLiveViewThread extends Thread {
     PeerConnectionClient pc = null;
-    ByteBuffer transByteBuffer = ByteBuffer.allocate(1024 * 1024);
     DataChannel outChannel = null;
     int channelIndex = -1;
     boolean bAutoLoop = false;
@@ -27,6 +26,7 @@ public class SendingLiveViewThread extends Thread {
     String ip_address = null;
     InputStream in = null;
     byte[] transferBuffer = new byte[1024*1024];
+    ByteBuffer transByteBuffer = null;
 
     public SendingLiveViewThread(PeerConnectionClient pcc, int channel_index, String ip) {
         channelIndex = channel_index;
@@ -42,10 +42,17 @@ public class SendingLiveViewThread extends Thread {
     @Override
     public void run() {
         // OV Camera default setting
+        try {
+            this.sleep(1000);
+        } catch (Exception e) {
+            Log.d("HANK","Sleep fail");
+        }
         LocalSocket localSocket = new LocalSocket();
+
         try {
             localSocket.connect(new LocalSocketAddress(ip_address + "-video"));
             in = localSocket.getInputStream();
+
 
             pc.sendVideoInfo(channelIndex, "MIME", "video/avc");
             pc.sendVideoInfo(channelIndex, "Width", "1280");
@@ -53,6 +60,8 @@ public class SendingLiveViewThread extends Thread {
             pc.sendVideoInfo(channelIndex, "sps", "00000001674d0028a9500a00b742000007d00001d4c008");
             pc.sendVideoInfo(channelIndex, "pps", "0000000168ee3c8000");
             pc.sendVideoInfo(channelIndex, "START");
+
+
         } catch (IOException e) {
             e.printStackTrace();
             Log.d("HANK","connect fail");

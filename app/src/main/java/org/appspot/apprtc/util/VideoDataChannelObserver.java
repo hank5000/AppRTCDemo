@@ -82,7 +82,7 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
     @Override
     public void onBufferedAmountChange(long bufferedByte) {
         // if coming here, maybe the internet is not stable.
-        // libjingle will Buffer Send Data by itself,
+        // libjingle will Buffer Sended Data by itself (if internet lag),
         // and show the Number of Buffered Byte (bufferedByte) at here
 
         // TODO: Maybe set a threshold to control data sending, ex bufferedByte>high_threshold, stop sending, bufferedByte<low_threshold, continue sending.
@@ -120,7 +120,7 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
                 try {
                     writableByteChannel.write(data);
                 } catch (Exception e) {
-                    Log.d("HANK", "os write fail");
+                    Log.d("HANK", "os write fail:"+e);
                 }
             } else {
                 Log.e("HANK","bStart is not enable, but received binary type buffer ?");
@@ -169,7 +169,6 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
                             vt.interrupt();
                             vt = null;
                         }
-
 
                         for(int jj=0;jj<10;jj++) {
                             try {

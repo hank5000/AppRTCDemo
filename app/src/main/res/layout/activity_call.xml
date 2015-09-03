@@ -7,16 +7,6 @@
         android:layout_height="match_parent">
 
 
-
-    <SurfaceView
-        android:id="@+id/liveView_call"
-        android:layout_width="640px"
-        android:layout_height="360px"
-        android:layout_alignParentTop="false"
-        android:layout_alignParentLeft="false"
-        android:layout_alignWithParentIfMissing="false"
-        android:layout_marginLeft="0dp" />
-
     <SurfaceView
         android:id="@+id/liveView_call2"
         android:layout_width="640px"
@@ -39,6 +29,15 @@
         android:layout_alignTop="@+id/liveView_call3"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true" />
+
+    <SurfaceView
+        android:id="@+id/liveView_call"
+        android:layout_width="1280px"
+        android:layout_height="720px"
+        android:layout_alignParentTop="false"
+        android:layout_alignParentLeft="false"
+        android:layout_alignWithParentIfMissing="false"
+        android:layout_marginLeft="0dp" />
 
     <FrameLayout
         android:id="@+id/call_fragment_container"
