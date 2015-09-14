@@ -92,8 +92,8 @@ public class CommunicationChannelObserver implements DataChannel.Observer {
                     //      [0]                             [1]                              [2]                     [3]                              [4]
                     String[] commands = command.split(":");
                     if (commands[0].equalsIgnoreCase(REQUEST_VIDEO_PREFIX)
-                            && commands[1].equalsIgnoreCase(REQUEST_VIDEO_ON_CHANNEL_PREFIX)
-                            && commands[3].equalsIgnoreCase(REQUEST_VIDEO_FILE_PATH_PREFIX)) {
+                     && commands[1].equalsIgnoreCase(REQUEST_VIDEO_ON_CHANNEL_PREFIX)
+                     && commands[3].equalsIgnoreCase(REQUEST_VIDEO_FILE_PATH_PREFIX)) {
                         final int onChannel = Integer.valueOf(commands[2]);
                         final String filePath = commands[4];
                         if (filePath.equalsIgnoreCase("STOP")) {
@@ -180,7 +180,7 @@ public class CommunicationChannelObserver implements DataChannel.Observer {
                     }
                 });
                 if(peerConnectionClient.isAutoInputAuthentication()) {
-                    peerConnectionClient.sendAuthencationInformation(peerConnectionClient.User, peerConnectionClient.Pass);
+                    peerConnectionClient.sendAuthencationInformation(peerConnectionClient.getUsername(), peerConnectionClient.getPassword());
                 } else {
                     // TODO dialog
                     executor.execute(new Runnable() {

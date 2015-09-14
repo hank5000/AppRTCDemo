@@ -2,6 +2,9 @@ package org.appspot.apprtc.util;
 
 /**
  * Created by HankWu_Office on 2015/8/28.
+ *
+ * Only Can Support ADPCM_IMA Currently.
+ *
  */
 import android.util.Log;
 
@@ -34,7 +37,8 @@ public class AudioThread extends Thread {
 
     public void run() {
         aout.init();
-        adpcmDecoderInit(1);
+        int openDebugInAdpcmDecode = 0;
+        adpcmDecoderInit(openDebugInAdpcmDecode);
 
         int n = 0;
 
@@ -56,7 +60,6 @@ public class AudioThread extends Thread {
             {
                 System.arraycopy(abuff_tmp, 256*j, abuff_dec, 0, 256);
                 byte[] audioData = adpcmDecode(abuff_dec,0,256);
-
                 aout.playBuffer(audioData, 505*2, 505);
             }
         }

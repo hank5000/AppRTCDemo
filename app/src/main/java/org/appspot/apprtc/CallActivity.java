@@ -33,36 +33,28 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager.LayoutParams;
-import android.widget.Adapter;
-import android.widget.ArrayAdapter;
+
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.GridView;
-import android.widget.ListView;
-import android.widget.NumberPicker;
+
 import android.widget.Toast;
 
-import org.appspot.apprtc.util.VideoDataChannelObserver;
+import org.appspot.apprtc.util.RoomCheckerThread;
 import org.webrtc.IceCandidate;
 import org.webrtc.SessionDescription;
 import org.webrtc.StatsReport;
-import org.webrtc.VideoRendererGui.ScalingType;
 import android.widget.AdapterView;
 import android.app.AlertDialog.Builder;
 
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
+
 import java.net.URL;
 import java.net.URLConnection;
-import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Activity for peer connection call setup, call waiting
@@ -75,32 +67,14 @@ public class CallActivity extends Activity
 
   public static final String EXTRA_ROOMID =
       "org.appspot.apprtc.ROOMID";
-  public static final String EXTRA_LOOPBACK =
-      "org.appspot.apprtc.LOOPBACK";
-  public static final String EXTRA_VIDEO_CALL =
-      "org.appspot.apprtc.VIDEO_CALL";
-  public static final String EXTRA_VIDEO_WIDTH =
-      "org.appspot.apprtc.VIDEO_WIDTH";
-  public static final String EXTRA_VIDEO_HEIGHT =
-      "org.appspot.apprtc.VIDEO_HEIGHT";
-  public static final String EXTRA_VIDEO_FPS =
-      "org.appspot.apprtc.VIDEO_FPS";
-  public static final String EXTRA_VIDEO_BITRATE =
-      "org.appspot.apprtc.VIDEO_BITRATE";
-  public static final String EXTRA_VIDEOCODEC =
-      "org.appspot.apprtc.VIDEOCODEC";
-  public static final String EXTRA_HWCODEC_ENABLED =
-      "org.appspot.apprtc.HWCODEC";
-  public static final String EXTRA_AUDIO_BITRATE =
-      "org.appspot.apprtc.AUDIO_BITRATE";
-  public static final String EXTRA_AUDIOCODEC =
-      "org.appspot.apprtc.AUDIOCODEC";
-  public static final String EXTRA_NOAUDIOPROCESSING_ENABLED =
-      "org.appspot.apprtc.NOAUDIOPROCESSING";
   public static final String EXTRA_CPUOVERUSE_DETECTION =
       "org.appspot.apprtc.CPUOVERUSE_DETECTION";
   public static final String EXTRA_DISPLAY_HUD =
       "org.appspot.apprtc.DISPLAY_HUD";
+
+  public static final String EXTRA_USERNAME = "test.via.hank.USERNAME";
+  public static final String EXTRA_PASSWORD = "test.via.hank.PASSWORD";
+
   //Hank Extension
   public static final String EXTRA_CHAT_ROOM = "test.via.hank.CHAT_ROOM";
   public static final String EXTRA_CREATE_SIDE = "test.via.hank.CREATE_SIDE";
@@ -124,11 +98,9 @@ public class CallActivity extends Activity
   private PeerConnectionClient peerConnectionClient = null;
   private AppRTCClient appRtcClient;
   private SignalingParameters signalingParameters;
-  private AppRTCAudioManager audioManager = null;
 
   private Toast logToast;
   private boolean commandLineRun;
-  private int runTimeMs;
   private boolean activityRunning;
   private boolean bCreateSide;
   private RoomConnectionParameters roomConnectionParameters;
@@ -146,8 +118,10 @@ public class CallActivity extends Activity
   // Live View
   public SurfaceView[] surfaceViews = new SurfaceView[4];
   SurfaceHolder[] surfaceHolders = new SurfaceHolder[4];
-
   LiveViewInfo liveViewInfo = new LiveViewInfo();
+
+  String username = "";
+  String password = "";
 
   ////////////////////////////////
   ///////////////////////////////
@@ -209,8 +183,8 @@ public class CallActivity extends Activity
       return;
     }
 
-    final String sendHttpRoomId = roomId;
-    boolean loopback = intent.getBooleanExtra(EXTRA_LOOPBACK, false);
+    username = intent.getStringExtra(EXTRA_USERNAME);
+    password = intent.getStringExtra(EXTRA_PASSWORD);
 
     bCreateSide = intent.getBooleanExtra(EXTRA_CREATE_SIDE,false);
 
@@ -221,12 +195,12 @@ public class CallActivity extends Activity
         intent.getBooleanExtra(EXTRA_CREATE_SIDE,false));
 
     commandLineRun = intent.getBooleanExtra(EXTRA_CMDLINE, false);
-    runTimeMs = intent.getIntExtra(EXTRA_RUNTIME, 0);
+
 
     // Create connection client and connection parameters.
-    appRtcClient = new WebSocketRTCClient(this, new LooperExecutor(),this);
+    appRtcClient = new WebSocketRTCClient(this, new LooperExecutor());
     roomConnectionParameters = new RoomConnectionParameters(
-        roomUri.toString(), roomId, loopback);
+        roomUri.toString(), roomId, false);
 
     // Send intent arguments to fragments.
     callFragment.setArguments(intent.getExtras());
@@ -238,37 +212,16 @@ public class CallActivity extends Activity
     ft.commit();
     startCall();
 
-    Thread a = new Thread(new Runnable() {
-      @Override
-      public void run() {
-
-          // TODO: Register room number to via server
-          try {
-            String method = "";
-            if(bCreateSide) {
-              method = "RoomCreate";
-            } else {
-              method = "RoomRemove";
-            }
-            String Username   = "Username";
-            String Password   = "Password";
-            String RoomId     = "RoomId";
-            String urlString = "http://122.147.15.216/"+method+"?"+Username+"=HankWu&"+Password+"=123456&"+RoomId+"="+sendHttpRoomId;
-            URL url = new URL(urlString);
-            URLConnection conn = url.openConnection();
-            Log.e("HANK", "connect success! "+urlString);
-            InputStream is = conn.getInputStream();
-
-          } catch (IOException e) {
-            Log.e("HANK", "open connection fail "+ e);
-
-          }
-      }
-    });
-    a.start();
+    if(bCreateSide) {
+      Log.d("HANK","RoomCreate Thread start");
+      Thread registerRoomThread = new RoomCheckerThread("RoomCreate",username,password,roomId);
+      registerRoomThread.start();
+    }
 
     createPeerConnectionFactory();
 
+//
+// TODO: REMOVE the following code, bcuz Mixplayer will do that.
     int j = 0;
     // Create Live View
     surfaceViews[j] = (SurfaceView) findViewById(R.id.liveView_call);
@@ -282,11 +235,13 @@ public class CallActivity extends Activity
             me.reset();
             me.setDisplay(holder);
             try {
-              String OV_IP = "192.168.12.112";
-              me.setDataSource("OV://"+OV_IP+":1000");
+//              String OV_IP = "192.168.12.112";
+//              me.setDataSource("OV://"+OV_IP+":1000");
+              String RTSP_IP = "rtsp://192.168.12.202:554/rtpvideo1.sdp";
+              me.setDataSource(RTSP_IP);
               me.prepare();
               me.start();
-              liveViewInfo.add(OV_IP,"Camera01");
+              liveViewInfo.add("RTSP", "RTSP-Camera01");
             } catch (IOException e) {
               e.printStackTrace();
             }
@@ -322,7 +277,7 @@ public class CallActivity extends Activity
             me2.setDataSource("OV://"+OV_IP+":1000");
             me2.prepare();
             me2.start();
-            liveViewInfo.add(OV_IP,"Camera02");
+            liveViewInfo.add(OV_IP,"OV-Camera02");
           } catch (IOException e) {
             e.printStackTrace();
           }
@@ -342,42 +297,45 @@ public class CallActivity extends Activity
       }
     });
 
-    j=2;
-    surfaceViews[j] = (SurfaceView) findViewById(R.id.liveView_call3);
-    surfaceHolders[j] = surfaceViews[1].getHolder();
-    surfaceHolders[j].addCallback(new SurfaceHolder.Callback() {
-      @Override
-      public void surfaceCreated(SurfaceHolder holder) {
-      }
+//    j=2;
+//    surfaceViews[j] = (SurfaceView) findViewById(R.id.liveView_call3);
+//    surfaceHolders[j] = surfaceViews[1].getHolder();
+//    surfaceHolders[j].addCallback(new SurfaceHolder.Callback() {
+//      @Override
+//      public void surfaceCreated(SurfaceHolder holder) {
+//      }
+//
+//      @Override
+//      public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+//      }
+//
+//      @Override
+//      public void surfaceDestroyed(SurfaceHolder holder) {
+//
+//      }
+//    });
+//
+//    j=3;
+//    surfaceViews[j] = (SurfaceView) findViewById(R.id.liveView_call4);
+//    surfaceHolders[j] = surfaceViews[1].getHolder();
+//    surfaceHolders[j].addCallback(new SurfaceHolder.Callback() {
+//      @Override
+//      public void surfaceCreated(SurfaceHolder holder) {
+//
+//      }
+//
+//      @Override
+//      public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+//      }
+//
+//      @Override
+//      public void surfaceDestroyed(SurfaceHolder holder) {
+//
+//      }
+//    });
 
-      @Override
-      public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-      }
 
-      @Override
-      public void surfaceDestroyed(SurfaceHolder holder) {
 
-      }
-    });
-
-    j=3;
-    surfaceViews[j] = (SurfaceView) findViewById(R.id.liveView_call4);
-    surfaceHolders[j] = surfaceViews[1].getHolder();
-    surfaceHolders[j].addCallback(new SurfaceHolder.Callback() {
-      @Override
-      public void surfaceCreated(SurfaceHolder holder) {
-
-      }
-
-      @Override
-      public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-      }
-
-      @Override
-      public void surfaceDestroyed(SurfaceHolder holder) {
-
-      }
-    });
   }
 
   // Activity interfaces
@@ -431,7 +389,6 @@ public class CallActivity extends Activity
                 logAndToast("Cancel!");
               }
             }).show();
-
   }
 
   private void showSelectChannelDialog(final String nick_name,final Dialog preDialog) {
@@ -512,13 +469,13 @@ public class CallActivity extends Activity
             return true; // if return true, then it will not trigger onItemClick.
             // if return false, then it will trigger onItemClick !
           } else {
-            if(peerConnectionClient.MAX_CHANNEL_NUMBER==1) {
+            if(PeerConnectionClient.getMaxChannelNumber()==1) {
               if (isOccupied(0)) {
                 peerConnectionClient.sendVideoRequest(0, "STOP");
               }
 
               for (;;) {
-                if (peerConnectionClient.videoDataChannelObservers[0].isIdle()) {
+                if (peerConnectionClient.getVideoDataChannelObserver(0).isIdle()) {
                   // TODO: This class only can use in one view case.
                   // wait for videoDataChannelObserver 0 is idle.
                   peerConnectionClient.sendLiveViewRequest(0, finalItem.get(position).getName());
@@ -543,12 +500,12 @@ public class CallActivity extends Activity
   }
 
   public boolean isOccupied(int index) {
-    return !peerConnectionClient.videoDataChannelObservers[index].isIdle();
+    return !peerConnectionClient.getVideoDataChannelObserver(index).isIdle();
   }
 
   public int findNonOccupyChannel() {
-    for(int i=0;i<peerConnectionClient.MAX_CHANNEL_NUMBER;i++) {
-      if (peerConnectionClient.videoDataChannelObservers[i].isIdle())
+    for(int i=0;i<PeerConnectionClient.getMaxChannelNumber();i++) {
+      if (peerConnectionClient.getVideoDataChannelObserver(i).isIdle())
       {
         return i;
       }
@@ -568,12 +525,20 @@ public class CallActivity extends Activity
 
     final View v = View.inflate(this,R.layout.request_video,null);
     //TODO: auto detect channel number
-    CheckBox ch1 = (CheckBox) (v.findViewById(R.id.checkBox2));
-    CheckBox ch2 = (CheckBox) (v.findViewById(R.id.checkBox3));
-    CheckBox ch3 = (CheckBox) (v.findViewById(R.id.checkBox4));
-    ch1.setVisibility(View.INVISIBLE);
-    ch2.setVisibility(View.INVISIBLE);
-    ch3.setVisibility(View.INVISIBLE);
+    CheckBox[] checkBoxes = new CheckBox[4];
+
+    checkBoxes[0] = (CheckBox) (v.findViewById(R.id.checkBox));
+    checkBoxes[1] = (CheckBox) (v.findViewById(R.id.checkBox2));
+    checkBoxes[2] = (CheckBox) (v.findViewById(R.id.checkBox3));
+    checkBoxes[3] = (CheckBox) (v.findViewById(R.id.checkBox4));
+
+    for(int i=0;i<4;i++) {
+      if(i<PeerConnectionClient.getMaxChannelNumber()) {
+        checkBoxes[i].setVisibility(View.VISIBLE);
+      } else {
+        checkBoxes[i].setVisibility(View.INVISIBLE);
+      }
+    }
 
     new AlertDialog.Builder(this)
             .setTitle("Send Video Request")
@@ -584,8 +549,6 @@ public class CallActivity extends Activity
                 CheckBox ch1 = (CheckBox) (v.findViewById(R.id.checkBox2));
                 CheckBox ch2 = (CheckBox) (v.findViewById(R.id.checkBox3));
                 CheckBox ch3 = (CheckBox) (v.findViewById(R.id.checkBox4));
-
-
 
                 boolean[] checkedArray = new boolean[4];
 
@@ -664,21 +627,6 @@ public class CallActivity extends Activity
         roomConnectionParameters.roomUrl));
     appRtcClient.connectToRoom(roomConnectionParameters);
 
-//    // Create and audio manager that will take care of audio routing,
-//    // audio modes, audio device enumeration etc.
-//    audioManager = AppRTCAudioManager.create(this, new Runnable() {
-//        // This method will be called each time the audio state (number and
-//        // type of devices) has been changed.
-//        @Override
-//        public void run() {
-//          onAudioManagerChangedState();
-//        }
-//      }
-//    );
-//    // Store existing audio settings and change audio mode to
-//    // MODE_IN_COMMUNICATION for best possible VoIP performance.
-//    Log.d(TAG, "Initializing the audio manager...");
-//    audioManager.init();
   }
 
   // Should be called from UI thread
@@ -688,14 +636,16 @@ public class CallActivity extends Activity
 
     // Update video view.
     //updateVideoView();
+    if(!bCreateSide) {
+        Thread registerRoomThread = new RoomCheckerThread("RoomRemove",username,password,"");
+        registerRoomThread.start();
+    }
+
     // Enable statistics callback.
     peerConnectionClient.enableStatsEvents(true, STAT_CALLBACK_PERIOD);
   }
 
-  private void onAudioManagerChangedState() {
-    // TODO(henrika): disable video if AppRTCAudioManager.AudioDevice.EARPIECE
-    // is active.
-  }
+
 
   // Create peer connection factory when EGL context is ready.
   private void createPeerConnectionFactory() {
@@ -708,6 +658,7 @@ public class CallActivity extends Activity
           peerConnectionClient = PeerConnectionClient.getInstance();
           peerConnectionClient.setLiveViewSurface(surfaceViews);
           peerConnectionClient.setLiveViewInfo(liveViewInfo);
+          peerConnectionClient.setUsernameAndPassword(username,password);
           peerConnectionClient.createPeerConnectionFactory(CallActivity.this, peerConnectionParameters, CallActivity.this);
         }
         if (signalingParameters != null) {
@@ -737,6 +688,7 @@ public class CallActivity extends Activity
     }
 
     if (peerConnectionClient != null) {
+      peerConnectionClient.stopAllThread();
       peerConnectionClient.close();
       peerConnectionClient = null;
     }

@@ -119,7 +119,6 @@ public class CreateSideFragment extends Fragment {
         if (args != null) {
             String contactName = args.getString(CallActivity.EXTRA_ROOMID);
             contactView.setText(contactName);
-            videoCallEnabled = args.getBoolean(CallActivity.EXTRA_VIDEO_CALL, true);
         }
         if (!videoCallEnabled) {
             cameraSwitchButton.setVisibility(View.INVISIBLE);

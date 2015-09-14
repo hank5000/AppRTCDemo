@@ -69,6 +69,8 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
         return msg.equalsIgnoreCase(VIDEO_PREFIX);
     }
 
+    public void stopThread() {if(vt!=null){vt.setStop();vt.interrupt();vt=null;}}
+
     private enum VideoMessageType {
         WIDTH,
         HEIGHT,

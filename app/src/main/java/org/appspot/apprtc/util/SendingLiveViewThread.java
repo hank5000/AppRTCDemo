@@ -27,6 +27,9 @@ public class SendingLiveViewThread extends Thread {
     InputStream in = null;
     byte[] transferBuffer = new byte[1024*1024];
     ByteBuffer transByteBuffer = null;
+    // TODO: Currently using hardcode. Feature:  it need to send from OV Extractor
+    final String OV_SPS = "00000001674d0028a9500a00b742000007d00001d4c008";
+    final String OV_PPS = "0000000168ee3c8000";
 
     public SendingLiveViewThread(PeerConnectionClient pcc, int channel_index, String ip) {
         channelIndex = channel_index;
@@ -41,27 +44,55 @@ public class SendingLiveViewThread extends Thread {
 
     @Override
     public void run() {
-        // OV Camera default setting
+        // wait for Default setting
         try {
             this.sleep(1000);
         } catch (Exception e) {
             Log.d("HANK","Sleep fail");
         }
         LocalSocket localSocket = new LocalSocket();
-
         try {
             localSocket.connect(new LocalSocketAddress(ip_address + "-video"));
             in = localSocket.getInputStream();
 
+            if(localSocket.isConnected())
+            {
+                byte[] extra_data = new byte[512];
+                int n = in.read(extra_data);
+                String extra_msg = new String(extra_data,"UTF-8");
+                String[] extra_split = extra_msg.split(":");
 
-            pc.sendVideoInfo(channelIndex, "MIME", "video/avc");
-            pc.sendVideoInfo(channelIndex, "Width", "1280");
-            pc.sendVideoInfo(channelIndex, "Height", "720");
-            pc.sendVideoInfo(channelIndex, "sps", "00000001674d0028a9500a00b742000007d00001d4c008");
-            pc.sendVideoInfo(channelIndex, "pps", "0000000168ee3c8000");
-            pc.sendVideoInfo(channelIndex, "START");
+                String source_type=extra_split[0];
+                String source_width="";
+                String source_height="";
+                String source_sps = "";
+                String source_pps = "";
 
+                if (source_type.equalsIgnoreCase("RTSP")) {
+                    Log.d("HANK","RTSP Source");
+                    source_width = extra_split[1];
+                    source_height= extra_split[2];
+                    // find pps start code
+                    int pps_pos  = extra_split[3].indexOf("00000001", 5);
+                    source_sps   = extra_split[3].substring(0,pps_pos);
+                    source_pps   = extra_split[3].substring(pps_pos, extra_split[3].length());
 
+                } else if (source_type.equalsIgnoreCase("OV")) {
+                    //TODO: Remove hardcode
+                    Log.d("HANK","OV Source");
+
+                    source_width = "1280";
+                    source_height= "720";
+                    source_sps= OV_SPS;
+                    source_pps= OV_PPS;
+                }
+                pc.sendVideoInfo(channelIndex, "MIME", "video/avc");
+                pc.sendVideoInfo(channelIndex, "Width", source_width);
+                pc.sendVideoInfo(channelIndex, "Height", source_height);
+                pc.sendVideoInfo(channelIndex, "sps", source_sps);
+                pc.sendVideoInfo(channelIndex, "pps", source_pps);
+                pc.sendVideoInfo(channelIndex, "START");
+            }
         } catch (IOException e) {
             e.printStackTrace();
             Log.d("HANK","connect fail");
@@ -69,12 +100,13 @@ public class SendingLiveViewThread extends Thread {
             bStart = false;
         }
 
+        // raw data ..
         int minus1Counter = 0;
         while (!Thread.interrupted() && bStart && localSocket.isConnected()) {
             int naluSize = 0;
             try {
                 naluSize = in.read(transferBuffer);
-                Log.d("HANK","read :"+naluSize);
+                //Log.d("HANK","read :"+naluSize);
                 if(naluSize==-1) {
                     minus1Counter++;
                     Log.d("HANK","minus1Counter :"+minus1Counter);

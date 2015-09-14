@@ -128,6 +128,14 @@
     <string name="pref_enable_channel_create_side_default">false</string>
 
 
+    <string name="pref_username_key">username setting</string>
+    <string name="pref_username_title">Username</string>
+    <string name="pref_username_dlg">Enter your username.</string>
+    <string name="pref_username_default" translatable="false">defaultUser</string>
 
+    <string name="pref_password_key">password setting</string>
+    <string name="pref_password_title">Password</string>
+    <string name="pref_password_dlg">Enter your password</string>
+    <string name="pref_password_default" translatable="false">defaultPassword</string>
 
 </resources>

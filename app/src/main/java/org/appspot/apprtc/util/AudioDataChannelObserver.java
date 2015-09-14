@@ -53,6 +53,8 @@ public class AudioDataChannelObserver implements DataChannel.Observer {
     AudioThread at = null;
     boolean bStart = false;
 
+    public void stopThread() {if(at!=null){at.setStop();at.interrupt();at=null;}}
+
     private boolean isAudioMessage(String msg) {
         return msg.equalsIgnoreCase(AUDIO_PREFIX);
     }

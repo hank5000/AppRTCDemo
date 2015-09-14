@@ -15,13 +15,16 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.TextureView;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
@@ -30,6 +33,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -61,44 +65,47 @@ public class ConnectActivity extends Activity {
   private static final String TAG = "ConnectActivity";
   private static final int CONNECTION_REQUEST = 1;
   private static boolean commandLineRun = false;
+  private ConnectActivity connectActivity = this;
+  private ImageButton refreshButton;
 
-  private ImageButton addRoomButton;
-  private ImageButton removeRoomButton;
+  private static final boolean bForSaleMode = true;
+
   private ImageButton connectButton;
-  private ImageButton connectLoopbackButton;
   private EditText roomEditText;
-  private ListView roomListView;
+  private TextView roomEdittextDescription;
+  private TextView normalModeDescription;
+
+  private ImageButton online_offline;
+  private boolean bOnline = false;
+
   private SharedPreferences sharedPref;
-  private String keyprefVideoCallEnabled;
-  private String keyprefResolution;
-  private String keyprefFps;
-  private String keyprefVideoBitrateType;
-  private String keyprefVideoBitrateValue;
-  private String keyprefVideoCodec;
-  private String keyprefAudioBitrateType;
-  private String keyprefAudioBitrateValue;
-  private String keyprefAudioCodec;
-  private String keyprefHwCodecAcceleration;
-  private String keyprefNoAudioProcessingPipeline;
+
   private String keyprefCpuUsageDetection;
   private String keyprefDisplayHud;
   private String keyprefRoomServerUrl;
   private String keyprefRoom;
-  private String keyprefRoomList;
 
   // Hank Extension.
   private String keyperfEnableChatRoom;
   private String keyperfChannelCreateSide;
+  private String keyUsername;
+  private String keyPassword;
   //
 
-  private ArrayList<String> roomList;
-  private ArrayAdapter<String> adapter;
 
-  private boolean bUpdated = false;
   private boolean bNoCreateSide = false;
+  private boolean bCreateChannelSide = false;
+  private boolean bAutoConnect = true;
+  private String username = "";
+  private String password = "";
+  private String DS2RoomID = "";
 
-
-
+  public void hideNormalModeInfo() {
+    connectButton.setVisibility(View.INVISIBLE);
+    normalModeDescription.setVisibility(View.INVISIBLE);
+    roomEdittextDescription.setVisibility(View.INVISIBLE);
+    roomEditText.setVisibility(View.INVISIBLE);
+  }
 
 
   @Override
@@ -108,138 +115,80 @@ public class ConnectActivity extends Activity {
     // Get setting keys.
     PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
     sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-    keyprefVideoCallEnabled = getString(R.string.pref_videocall_key);
-    keyprefResolution = getString(R.string.pref_resolution_key);
-    keyprefFps = getString(R.string.pref_fps_key);
-    keyprefVideoBitrateType = getString(R.string.pref_startvideobitrate_key);
-    keyprefVideoBitrateValue = getString(R.string.pref_startvideobitratevalue_key);
-    keyprefVideoCodec = getString(R.string.pref_videocodec_key);
-    keyprefHwCodecAcceleration = getString(R.string.pref_hwcodec_key);
-    keyprefAudioBitrateType = getString(R.string.pref_startaudiobitrate_key);
-    keyprefAudioBitrateValue = getString(R.string.pref_startaudiobitratevalue_key);
-    keyprefAudioCodec = getString(R.string.pref_audiocodec_key);
-    keyprefNoAudioProcessingPipeline = getString(R.string.pref_noaudioprocessing_key);
+
     keyprefCpuUsageDetection = getString(R.string.pref_cpu_usage_detection_key);
     keyprefDisplayHud = getString(R.string.pref_displayhud_key);
     keyprefRoomServerUrl = getString(R.string.pref_room_server_url_key);
     keyprefRoom = getString(R.string.pref_room_key);
-    keyprefRoomList = getString(R.string.pref_room_list_key);
 
     // Hank Extension
     keyperfEnableChatRoom = getString(R.string.pref_enable_chat_room_key_key);
     keyperfChannelCreateSide = getString(R.string.pref_enable_channel_create_side_key);
+    keyUsername = getString(R.string.pref_username_key);
+    keyPassword = getString(R.string.pref_password_key);
 
 
+    username = sharedPref.getString(
+            keyUsername,
+            getString(R.string.pref_username_default));
+
+    password = sharedPref.getString(
+            keyPassword,
+            getString(R.string.pref_password_default));
 
     setContentView(R.layout.activity_connect);
 
-    roomEditText = (EditText) findViewById(R.id.room_edittext);
-    roomEditText.setOnEditorActionListener(
-            new TextView.OnEditorActionListener() {
-              @Override
-              public boolean onEditorAction(
-                      TextView textView, int i, KeyEvent keyEvent) {
-                if (i == EditorInfo.IME_ACTION_DONE) {
-                  addRoomButton.performClick();
-                  return true;
-                }
-                return false;
-              }
-            });
-    roomEditText.requestFocus();
 
-    roomListView = (ListView) findViewById(R.id.room_listview);
-    roomListView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-
-    addRoomButton = (ImageButton) findViewById(R.id.add_room_button);
-    addRoomButton.setOnClickListener(addRoomListener);
-    removeRoomButton = (ImageButton) findViewById(R.id.remove_room_button);
-    removeRoomButton.setOnClickListener(removeRoomListener);
+    refreshButton = (ImageButton) findViewById(R.id.refresh_button);
+    refreshButton.setOnClickListener(refreshRoom);
     connectButton = (ImageButton) findViewById(R.id.connect_button);
     connectButton.setOnClickListener(connectListener);
-    connectLoopbackButton =
-        (ImageButton) findViewById(R.id.connect_loopback_button);
-    connectLoopbackButton.setOnClickListener(connectListener);
-    connectLoopbackButton.setVisibility(View.INVISIBLE);
 
-    boolean bCreateChannelSide = sharedPref.getBoolean(
+    normalModeDescription = (TextView) findViewById(R.id.normal_mode_description);
+    roomEdittextDescription = (TextView) findViewById(R.id.room_edittext_description);
+    roomEditText = (EditText) findViewById(R.id.room_edittext);
+
+
+
+    online_offline = (ImageButton) findViewById(R.id.online_offline_button);
+    online_offline.setOnClickListener(onlineListener);
+
+    if(bForSaleMode) {
+      hideNormalModeInfo();
+    }
+
+    bCreateChannelSide = sharedPref.getBoolean(
             keyperfChannelCreateSide,
             Boolean.valueOf(getString(R.string.pref_enable_channel_create_side_default)));
 
     if(bCreateChannelSide) {
+      if(bAutoConnect) {
+        String roomId = Integer.toString((new Random()).nextInt(100000000));
+        roomEditText.setText(roomId);
+        connectToRoom(0);
+      }
 
-
-      String roomId = Integer.toString((new Random()).nextInt(100000000));
-      roomEditText.setText(roomId);
-      connectToRoom(false,0);
     } else {
 
-      Thread updateRoomIdThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-          try {
-            bUpdated = false;
-            bNoCreateSide = false;
-            String method = "RoomGet";
-            String Username   = "Username";
-            String Password   = "Password";
-            String urlString = "http://122.147.15.216/"+method+"?"+Username+"=HankWu&"+Password+"=123456";
+      GetRoomIdThread firstUpdate = new GetRoomIdThread(connectActivity,true);
+      firstUpdate.start();
 
-            URL url = new URL(urlString);
-            URLConnection urlConnection = url.openConnection();
-            urlConnection.setRequestProperty("Connection", "close");
-            HttpURLConnection httpConn = (HttpURLConnection)urlConnection;
-            InputStream is;
-
-            if (httpConn.getResponseCode() >= 400) {
-              is = httpConn.getErrorStream();
-            } else {
-              is = httpConn.getInputStream();
-            }
-
-            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-            String line = "";
-            if((line = reader.readLine()) != null) {
-              Log.d("HANK", "RoomId:" + line);
-              final String RoomId = line;
-
-              runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                  EditText roomId_ed = (EditText) findViewById(R.id.room_edittext);
-                  roomId_ed.setText(RoomId, TextView.BufferType.EDITABLE);
-
-                }
-              });
-            }
-
-          } catch (IOException e) {
-            Log.e("HANK", "open connection fail"+e);
-
-          }
-        }
-      });
-
-
-      updateRoomIdThread.start();
     }
 
-
-
-    // If an implicit VIEW intent is launching the app, go directly to that URL.
-    final Intent intent = getIntent();
-    if ("android.intent.action.VIEW".equals(intent.getAction())
-        && !commandLineRun) {
-      commandLineRun = true;
-      boolean loopback = intent.getBooleanExtra(
-          CallActivity.EXTRA_LOOPBACK, false);
-      int runTimeMs = intent.getIntExtra(
-          CallActivity.EXTRA_RUNTIME, 0);
-      String room = sharedPref.getString(keyprefRoom, "");
-      roomEditText.setText(room);
-      connectToRoom(loopback, runTimeMs);
-      return;
-    }
+//    // If an implicit VIEW intent is launching the app, go directly to that URL.
+//    final Intent intent = getIntent();
+//    if ("android.intent.action.VIEW".equals(intent.getAction())
+//        && !commandLineRun) {
+//      commandLineRun = true;
+//      boolean loopback = intent.getBooleanExtra(
+//          CallActivity.EXTRA_LOOPBACK, false);
+//      int runTimeMs = intent.getIntExtra(
+//          CallActivity.EXTRA_RUNTIME, 0);
+//      String room = sharedPref.getString(keyprefRoom, "");
+//      roomEditText.setText(room);
+//      connectToRoom(runTimeMs);
+//      return;
+//    }
   }
 
   @Override
@@ -264,10 +213,10 @@ public class ConnectActivity extends Activity {
   public void onPause() {
     super.onPause();
     String room = roomEditText.getText().toString();
-    String roomListJson = new JSONArray(roomList).toString();
+    //String roomListJson = new JSONArray(roomList).toString();
     SharedPreferences.Editor editor = sharedPref.edit();
     editor.putString(keyprefRoom, room);
-    editor.putString(keyprefRoomList, roomListJson);
+    //editor.putString(keyprefRoomList, roomListJson);
     editor.commit();
   }
 
@@ -276,34 +225,29 @@ public class ConnectActivity extends Activity {
     super.onResume();
     String room = sharedPref.getString(keyprefRoom, "");
     roomEditText.setText(room);
-    roomList = new ArrayList<String>();
-    String roomListJson = sharedPref.getString(keyprefRoomList, null);
-    if (roomListJson != null) {
-      try {
-        JSONArray jsonArray = new JSONArray(roomListJson);
-        for (int i = 0; i < jsonArray.length(); i++) {
-          roomList.add(jsonArray.get(i).toString());
-        }
-      } catch (JSONException e) {
-        Log.e(TAG, "Failed to load room list: " + e.toString());
-      }
-    }
-    adapter = new ArrayAdapter<String>(
-        this, android.R.layout.simple_list_item_1, roomList);
-    roomListView.setAdapter(adapter);
-    if (adapter.getCount() > 0) {
-      roomListView.requestFocus();
-      roomListView.setItemChecked(0, true);
-    }
-    boolean bCreateChannelSide = sharedPref.getBoolean(
+//    String roomListJson = sharedPref.getString(keyprefRoomList, null);
+//    if (roomListJson != null) {
+//      try {
+//        JSONArray jsonArray = new JSONArray(roomListJson);
+//        for (int i = 0; i < jsonArray.length(); i++) {
+//          roomList.add(jsonArray.get(i).toString());
+//        }
+//      } catch (JSONException e) {
+//        Log.e(TAG, "Failed to load room list: " + e.toString());
+//      }
+//    }
+
+    bCreateChannelSide = sharedPref.getBoolean(
             keyperfChannelCreateSide,
             Boolean.valueOf(getString(R.string.pref_enable_channel_create_side_default)));
-    if(bCreateChannelSide) {
-      String roomId = Integer.toString((new Random()).nextInt(100000000));
-      roomEditText.setText(roomId);
-      connectToRoom(false, 0);
-    }
 
+    if(bCreateChannelSide) {
+      if(bAutoConnect) {
+        String roomId = Integer.toString((new Random()).nextInt(100000000));
+        roomEditText.setText(roomId);
+        connectToRoom(0);
+      }
+    }
   }
 
   @Override
@@ -317,156 +261,131 @@ public class ConnectActivity extends Activity {
     }
   }
 
+  public void changeOnOfflineButton(boolean isOnline) {
+    bOnline = isOnline;
+    if(isOnline) {
+      online_offline.setBackgroundResource(0);
+      online_offline.setImageDrawable(getResources().getDrawable(R.drawable.online_shadow));
+      online_offline.setAlpha((float) 1);
+
+      online_offline.setScaleType(ImageView.ScaleType.FIT_XY);
+    } else {
+      online_offline.setBackgroundResource(0);
+      online_offline.setImageDrawable(getResources().getDrawable(R.drawable.offline_shadow));
+      online_offline.setAlpha((float)0.1);
+      online_offline.setScaleType(ImageView.ScaleType.FIT_XY);
+
+    }
+  }
+
+  public class GetRoomIdThread extends Thread {
+    ConnectActivity act = null;
+    boolean bUpdate = false;
+    String registerRoomServerUrl = "http://122.147.15.216/";
+
+    public GetRoomIdThread(ConnectActivity connect_activity,boolean only_update) {
+        this.act = connect_activity;
+        this.bUpdate = only_update;
+      }
+
+      public void run() {
+        try {
+          bNoCreateSide = false;
+          final String ACCESS_METHOD = "RoomGet";
+          final String PREFIX_USERNAME   = "Username";
+          final String PREFIX_PASSWORD   = "Password";
+          String urlString = registerRoomServerUrl + ACCESS_METHOD + "?" + PREFIX_USERNAME + "="+username+"&" +PREFIX_PASSWORD+ "="+password;
+
+          URL url = new URL(urlString);
+          URLConnection urlConnection = url.openConnection();
+          urlConnection.setRequestProperty("Connection", "close");
+          HttpURLConnection httpConn = (HttpURLConnection)urlConnection;
+          InputStream is;
+
+          if (httpConn.getResponseCode() >= 400) {
+            is = httpConn.getErrorStream();
+          } else {
+            is = httpConn.getInputStream();
+          }
+
+          BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+          String line = "";
+          if((line = reader.readLine()) != null) {
+            Log.d("HANK", "RoomId:" + line);
+            final String RoomId = line;
+            DS2RoomID = RoomId;
+            if(RoomId.equalsIgnoreCase("null")) {
+              bNoCreateSide = true;
+            }
+            final boolean bConnect = !bUpdate;
+            final boolean bNoSource= bNoCreateSide;
+            runOnUiThread(new Runnable() {
+              @Override
+              public void run() {
+                if(bNoSource) {
+                  Log.e("HANK", "DS2 is not online!!!");
+                  act.changeOnOfflineButton(false);
+//                  GetRoomIdThread againThread = new GetRoomIdThread(connectActivity,true);
+//                  againThread.start();
+                } else {
+                  act.changeOnOfflineButton(true);
+                  if(bConnect) {
+                    EditText roomId_ed = (EditText) findViewById(R.id.room_edittext);
+                    roomId_ed.setText(DS2RoomID, TextView.BufferType.EDITABLE);
+                    act.connectToRoom(0);
+                  }
+                }
+              }
+            });
+          }
+
+        } catch (IOException e) {
+          Log.e("HANK", "open connection fail"+e);
+          runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+              act.changeOnOfflineButton(false);
+            }
+          });
+        }
+      }
+  }
+
   private final OnClickListener connectListener = new OnClickListener() {
     @Override
     public void onClick(View view) {
 
       commandLineRun = false;
-      bUpdated = false;
-
-      Thread updateRoomIdThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-          try {
-            bNoCreateSide = false;
-            bUpdated = false;
-            String method = "RoomGet";
-            String Username   = "Username";
-            String Password   = "Password";
-            String urlString = "http://122.147.15.216/"+method+"?"+Username+"=HankWu&"+Password+"=123456";
-
-            URL url = new URL(urlString);
-            URLConnection urlConnection = url.openConnection();
-            urlConnection.setRequestProperty("Connection", "close");
-            HttpURLConnection httpConn = (HttpURLConnection)urlConnection;
-            InputStream is;
-
-            if (httpConn.getResponseCode() >= 400) {
-              is = httpConn.getErrorStream();
-            } else {
-              is = httpConn.getInputStream();
-            }
-
-            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-            String line = "";
-            if((line = reader.readLine()) != null) {
-              Log.d("HANK", "RoomId:" + line);
-              final String RoomId = line;
-              if(RoomId.equalsIgnoreCase("null")) {
-                bNoCreateSide = true;
-              }
-              runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                  EditText roomId_ed = (EditText) findViewById(R.id.room_edittext);
-                  roomId_ed.setText(RoomId, TextView.BufferType.EDITABLE);
-                  bUpdated = true;
-
-                  if(bNoCreateSide) {
-                    Log.e("HANK","NO DS2");
-                  } else {
-                    connectToRoom(false, 0);
-                  }
-                }
-              });
-            }
-
-          } catch (IOException e) {
-            Log.e("HANK", "open connection fail"+e);
-
-          }
-        }
-      });
-      updateRoomIdThread.start();
-
+      updateAuthenticationInformation();
+//      GetRoomIdThread connect = new GetRoomIdThread(connectActivity,false);
+//      connect.start();
+      connectToRoom(0);
     }
   };
 
-  private void connectToRoom(boolean loopback, int runTimeMs) {
-    // Get room name (random for loopback).
-    String roomId;
-    if (loopback) {
-      roomId = Integer.toString((new Random()).nextInt(100000000));
-    } else {
-      roomId = getSelectedItem();
-      if (roomId == null) {
-        roomId = roomEditText.getText().toString();
+  private final OnClickListener onlineListener = new OnClickListener() {
+    @Override
+    public void onClick(View view) {
+      if(bOnline) {
+        commandLineRun = false;
+        updateAuthenticationInformation();
+        GetRoomIdThread connect = new GetRoomIdThread(connectActivity, false);
+        connect.start();
       }
     }
+  };
+
+
+
+
+  public void connectToRoom(int runTimeMs) {
+
+    String roomId = roomEditText.getText().toString();
+
 
     String roomUrl = sharedPref.getString(
-        keyprefRoomServerUrl,
-        getString(R.string.pref_room_server_url_default));
-
-    // Video call enabled flag.
-    boolean videoCallEnabled = sharedPref.getBoolean(keyprefVideoCallEnabled,
-        Boolean.valueOf(getString(R.string.pref_videocall_default)));
-
-    // Get default codecs.
-    String videoCodec = sharedPref.getString(keyprefVideoCodec,
-        getString(R.string.pref_videocodec_default));
-    String audioCodec = sharedPref.getString(keyprefAudioCodec,
-        getString(R.string.pref_audiocodec_default));
-
-    // Check HW codec flag.
-    boolean hwCodec = sharedPref.getBoolean(keyprefHwCodecAcceleration,
-        Boolean.valueOf(getString(R.string.pref_hwcodec_default)));
-
-    // Check Disable Audio Processing flag.
-    boolean noAudioProcessing = sharedPref.getBoolean(
-        keyprefNoAudioProcessingPipeline,
-        Boolean.valueOf(getString(R.string.pref_noaudioprocessing_default)));
-
-    // Get video resolution from settings.
-    int videoWidth = 0;
-    int videoHeight = 0;
-    String resolution = sharedPref.getString(keyprefResolution,
-        getString(R.string.pref_resolution_default));
-    String[] dimensions = resolution.split("[ x]+");
-    if (dimensions.length == 2) {
-      try {
-        videoWidth = Integer.parseInt(dimensions[0]);
-        videoHeight = Integer.parseInt(dimensions[1]);
-      } catch (NumberFormatException e) {
-        videoWidth = 0;
-        videoHeight = 0;
-        Log.e(TAG, "Wrong video resolution setting: " + resolution);
-      }
-    }
-
-    // Get camera fps from settings.
-    int cameraFps = 0;
-    String fps = sharedPref.getString(keyprefFps,
-        getString(R.string.pref_fps_default));
-    String[] fpsValues = fps.split("[ x]+");
-    if (fpsValues.length == 2) {
-      try {
-        cameraFps = Integer.parseInt(fpsValues[0]);
-      } catch (NumberFormatException e) {
-        Log.e(TAG, "Wrong camera fps setting: " + fps);
-      }
-    }
-
-    // Get video and audio start bitrate.
-    int videoStartBitrate = 0;
-    String bitrateTypeDefault = getString(
-        R.string.pref_startvideobitrate_default);
-    String bitrateType = sharedPref.getString(
-        keyprefVideoBitrateType, bitrateTypeDefault);
-    if (!bitrateType.equals(bitrateTypeDefault)) {
-      String bitrateValue = sharedPref.getString(keyprefVideoBitrateValue,
-          getString(R.string.pref_startvideobitratevalue_default));
-      videoStartBitrate = Integer.parseInt(bitrateValue);
-    }
-    int audioStartBitrate = 0;
-    bitrateTypeDefault = getString(R.string.pref_startaudiobitrate_default);
-    bitrateType = sharedPref.getString(
-        keyprefAudioBitrateType, bitrateTypeDefault);
-    if (!bitrateType.equals(bitrateTypeDefault)) {
-      String bitrateValue = sharedPref.getString(keyprefAudioBitrateValue,
-          getString(R.string.pref_startaudiobitratevalue_default));
-      audioStartBitrate = Integer.parseInt(bitrateValue);
-    }
+            keyprefRoomServerUrl,
+            getString(R.string.pref_room_server_url_default));
 
     // Test if CpuOveruseDetection should be disabled. By default is on.
     boolean cpuOveruseDetection = sharedPref.getBoolean(
@@ -486,9 +405,6 @@ public class ConnectActivity extends Activity {
             keyperfChannelCreateSide,
             Boolean.valueOf(getString(R.string.pref_enable_channel_create_side_default)));
 
-
-
-
     // Start AppRTCDemo activity.
     Log.d(TAG, "Connecting to room " + roomId + " at URL " + roomUrl);
     if (validateUrl(roomUrl)) {
@@ -496,27 +412,18 @@ public class ConnectActivity extends Activity {
       Intent intent = new Intent(this, CallActivity.class);
       intent.setData(uri);
       intent.putExtra(CallActivity.EXTRA_ROOMID, roomId);
-      intent.putExtra(CallActivity.EXTRA_LOOPBACK, loopback);
-      intent.putExtra(CallActivity.EXTRA_VIDEO_CALL, videoCallEnabled);
-      intent.putExtra(CallActivity.EXTRA_VIDEO_WIDTH, videoWidth);
-      intent.putExtra(CallActivity.EXTRA_VIDEO_HEIGHT, videoHeight);
-      intent.putExtra(CallActivity.EXTRA_VIDEO_FPS, cameraFps);
-      intent.putExtra(CallActivity.EXTRA_VIDEO_BITRATE, videoStartBitrate);
-      intent.putExtra(CallActivity.EXTRA_VIDEOCODEC, videoCodec);
-      intent.putExtra(CallActivity.EXTRA_HWCODEC_ENABLED, hwCodec);
-      intent.putExtra(CallActivity.EXTRA_NOAUDIOPROCESSING_ENABLED,
-          noAudioProcessing);
-      intent.putExtra(CallActivity.EXTRA_AUDIO_BITRATE, audioStartBitrate);
-      intent.putExtra(CallActivity.EXTRA_AUDIOCODEC, audioCodec);
       intent.putExtra(CallActivity.EXTRA_CPUOVERUSE_DETECTION,
           cpuOveruseDetection);
       intent.putExtra(CallActivity.EXTRA_DISPLAY_HUD, displayHud);
       // Hank Extension
       intent.putExtra(CallActivity.EXTRA_CHAT_ROOM, bEnableChatRoom);
       intent.putExtra(CallActivity.EXTRA_CREATE_SIDE, bCreateChannelSide);
+      intent.putExtra(CallActivity.EXTRA_USERNAME,username);
+      intent.putExtra(CallActivity.EXTRA_PASSWORD,password);
       //
       intent.putExtra(CallActivity.EXTRA_CMDLINE, commandLineRun);
       intent.putExtra(CallActivity.EXTRA_RUNTIME, runTimeMs);
+
 
       startActivityForResult(intent, CONNECTION_REQUEST);
     }
@@ -539,91 +446,37 @@ public class ConnectActivity extends Activity {
     return false;
   }
 
-  private final OnClickListener addRoomListener = new OnClickListener() {
-    @Override
-    public void onClick(View view) {
-      String newRoom = roomEditText.getText().toString();
-      if (newRoom.length() > 0 && !roomList.contains(newRoom)) {
-        adapter.add(newRoom);
-        adapter.notifyDataSetChanged();
-      }
-    }
-  };
+//  private final OnClickListener addRoomListener = new OnClickListener() {
+//    @Override
+//    public void onClick(View view) {
+//      String newRoom = roomEditText.getText().toString();
+//      if (newRoom.length() > 0 && !roomList.contains(newRoom)) {
+//        adapter.add(newRoom);
+//        adapter.notifyDataSetChanged();
+//      }
+//    }
+//  };
 
-  private final OnClickListener removeRoomListener = new OnClickListener() {
-    @Override
-    public void onClick(View view) {
+  private void updateAuthenticationInformation() {
+    username = sharedPref.getString(
+            keyUsername,
+            getString(R.string.pref_username_default));
 
-      Thread updateRoomIdThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-          try {
-            bUpdated = false;
-            bNoCreateSide = false;
-            String method = "RoomGet";
-            String Username   = "Username";
-            String Password   = "Password";
-            String urlString = "http://122.147.15.216/"+method+"?"+Username+"=HankWu&"+Password+"=123456";
-
-            URL url = new URL(urlString);
-            URLConnection urlConnection = url.openConnection();
-            urlConnection.setRequestProperty("Connection", "close");
-            HttpURLConnection httpConn = (HttpURLConnection)urlConnection;
-            InputStream is;
-
-            if (httpConn.getResponseCode() >= 400) {
-              is = httpConn.getErrorStream();
-            } else {
-              is = httpConn.getInputStream();
-            }
-
-            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-            String line = "";
-            if((line = reader.readLine()) != null) {
-              Log.d("HANK", "RoomId:" + line);
-              final String RoomId = line;
-
-              runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                  EditText roomId_ed = (EditText) findViewById(R.id.room_edittext);
-                  roomId_ed.setText(RoomId, TextView.BufferType.EDITABLE);
-
-                }
-              });
-            }
-
-          } catch (IOException e) {
-            Log.e("HANK", "open connection fail"+e);
-
-          }
-        }
-      });
-
-
-      updateRoomIdThread.start();
-
-      String selectedRoom = getSelectedItem();
-      if (selectedRoom != null) {
-        adapter.remove(selectedRoom);
-        adapter.notifyDataSetChanged();
-      }
-    }
-  };
-
-  private String getSelectedItem() {
-    int position = AdapterView.INVALID_POSITION;
-    if (roomListView.getCheckedItemCount() > 0 && adapter.getCount() > 0) {
-      position = roomListView.getCheckedItemPosition();
-      if (position >= adapter.getCount()) {
-        position = AdapterView.INVALID_POSITION;
-      }
-    }
-    if (position != AdapterView.INVALID_POSITION) {
-      return adapter.getItem(position);
-    } else {
-      return null;
-    }
+    password = sharedPref.getString(
+            keyPassword,
+            getString(R.string.pref_password_default));
   }
+
+  private final OnClickListener refreshRoom = new OnClickListener() {
+    @Override
+    public void onClick(View view) {
+
+      updateAuthenticationInformation();
+      GetRoomIdThread updateThread = new GetRoomIdThread(connectActivity,true);
+      updateThread.start();
+
+    }
+  };
+
 
 }

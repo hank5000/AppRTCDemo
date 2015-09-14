@@ -59,7 +59,7 @@ public class SendingLiveViewAudioThread extends Thread {
             } catch (IOException e) {
                 Log.d("HANK","audio inpustream read fail "+e);
             }
-            Log.d("HANK","audio inpustream read size "+n);
+            //Log.d("HANK","audio inpustream read size "+n);
 
         }
 

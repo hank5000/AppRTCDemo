@@ -50,6 +50,13 @@
       </intent-filter>
     </activity>
 
+    <service android:name=".ServerService">
+        <intent-filter>
+            <action android:name="org.appspot.apprtc.p2p.start"/>
+        </intent-filter>>
+    </service>>
+
+
     <activity
         android:name="SettingsActivity"
         android:label="@string/settings_name"

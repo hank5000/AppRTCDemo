@@ -57,12 +57,12 @@ public class WebSocketRTCClient implements AppRTCClient,
   private String leaveUrl;
   private CallActivity activity;
 
-  public WebSocketRTCClient(SignalingEvents events, LooperExecutor executor, CallActivity act) {
+  public WebSocketRTCClient(SignalingEvents events, LooperExecutor executor) {
     this.events = events;
     this.executor = executor;
     roomState = ConnectionState.NEW;
     executor.requestStart();
-    activity = act;
+    //activity = act;
   }
 
   // --------------------------------------------------------------------
@@ -332,7 +332,7 @@ public class WebSocketRTCClient implements AppRTCClient,
         if (roomState != ConnectionState.ERROR) {
           roomState = ConnectionState.ERROR;
           events.onChannelError(errorMessage);
-          activity.onCallHangUp();
+          //activity.onCallHangUp();
         }
       }
     });
