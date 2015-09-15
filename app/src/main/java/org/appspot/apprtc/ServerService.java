@@ -194,7 +194,8 @@ public class ServerService extends IntentService
     @Override
     protected void onHandleIntent(Intent intent) {
         Log.d(TAG, "onHandleIntent" + this);
-        //if(intent.getAction().equals(ServerStart))
+        Log.d(TAG, "Intent Action : "+intent.getAction());
+        if(intent.getAction().equals(ServerStart))
         {
             getPreferenceSetting();
             if(bCreateChannelSide) {
@@ -212,6 +213,8 @@ public class ServerService extends IntentService
     }
 
     public void StartServer() {
+        RunningNotification(notifyID,"RTCServer","Start");
+
         peerConnectionParameters = new PeerConnectionClient.PeerConnectionParameters(cpuOveruseDetection,
                 bEnableChatRoom,bCreateChannelSide);
         appRtcClient = new WebSocketRTCClient(this, new LooperExecutor());
@@ -302,7 +305,7 @@ public class ServerService extends IntentService
                     peerConnectionClient.setLiveViewSurface(surfaceViews);
                     liveViewInfo.reset();
                     liveViewInfo.add("RTSP", "RTSP202");
-                    liveViewInfo.add("192.168.12.112","OV112");
+                    liveViewInfo.add("192.168.12.114","OV114");
                     peerConnectionClient.setLiveViewInfo(liveViewInfo);
                     peerConnectionClient.setUsernameAndPassword(username, password);
                     peerConnectionClient.createPeerConnectionFactory(ServerService.this, peerConnectionParameters, ServerService.this);
@@ -369,6 +372,7 @@ public class ServerService extends IntentService
             public void run() {
                 logAndToast("Remote end hung up; dropping PeerConnection");
                 disconnect();
+
 
             }
         }));
@@ -541,6 +545,10 @@ public class ServerService extends IntentService
             //setResult(RESULT_CANCELED);
         }
         //finish();
+        RemoveNotification(notifyID);
+        /*
+        Reconnect
+         */
         iceConnected = false;
         isError = false;
         {

@@ -49,7 +49,7 @@ public class AudioThread extends Thread {
             } catch (IOException e) {
                 Log.d("HANK","audio inputstream read fail : "+e);
             }
-            Log.d("HANK","come in length : "+n);
+           // Log.d("HANK","come in length : "+n);
             if(n%256!=0)
             {
                 Log.d("HANK","Something wrong");

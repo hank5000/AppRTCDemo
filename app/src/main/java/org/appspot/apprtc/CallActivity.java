@@ -229,24 +229,6 @@ public class CallActivity extends Activity
     surfaceHolders[j].addCallback(new SurfaceHolder.Callback() {
       @Override
       public void surfaceCreated(SurfaceHolder holder) {
-        if(peerConnectionClient!=null) {
-          if(peerConnectionClient.isCreateSide()) {
-            me = new MediaPlayer();
-            me.reset();
-            me.setDisplay(holder);
-            try {
-//              String OV_IP = "192.168.12.112";
-//              me.setDataSource("OV://"+OV_IP+":1000");
-              String RTSP_IP = "rtsp://192.168.12.202:554/rtpvideo1.sdp";
-              me.setDataSource(RTSP_IP);
-              me.prepare();
-              me.start();
-              liveViewInfo.add("RTSP", "RTSP-Camera01");
-            } catch (IOException e) {
-              e.printStackTrace();
-            }
-          }
-        }
       }
 
       @Override
@@ -255,10 +237,7 @@ public class CallActivity extends Activity
 
       @Override
       public void surfaceDestroyed(SurfaceHolder holder) {
-        if(me!=null) {
-          me.release();
-          me = null;
-        }
+
       }
     });
 
@@ -268,20 +247,6 @@ public class CallActivity extends Activity
     surfaceHolders[j].addCallback(new SurfaceHolder.Callback() {
       @Override
       public void surfaceCreated(SurfaceHolder holder) {
-        if(peerConnectionClient.isCreateSide()) {
-          me2 = new MediaPlayer();
-          me2.reset();
-          me2.setDisplay(holder);
-          try {
-            String OV_IP = "192.168.12.114";
-            me2.setDataSource("OV://"+OV_IP+":1000");
-            me2.prepare();
-            me2.start();
-            liveViewInfo.add(OV_IP,"OV-Camera02");
-          } catch (IOException e) {
-            e.printStackTrace();
-          }
-        }
       }
 
       @Override
@@ -290,52 +255,9 @@ public class CallActivity extends Activity
 
       @Override
       public void surfaceDestroyed(SurfaceHolder holder) {
-        if(me2!=null) {
-          me2.release();
-          me2 = null;
-        }
+
       }
     });
-
-//    j=2;
-//    surfaceViews[j] = (SurfaceView) findViewById(R.id.liveView_call3);
-//    surfaceHolders[j] = surfaceViews[1].getHolder();
-//    surfaceHolders[j].addCallback(new SurfaceHolder.Callback() {
-//      @Override
-//      public void surfaceCreated(SurfaceHolder holder) {
-//      }
-//
-//      @Override
-//      public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-//      }
-//
-//      @Override
-//      public void surfaceDestroyed(SurfaceHolder holder) {
-//
-//      }
-//    });
-//
-//    j=3;
-//    surfaceViews[j] = (SurfaceView) findViewById(R.id.liveView_call4);
-//    surfaceHolders[j] = surfaceViews[1].getHolder();
-//    surfaceHolders[j].addCallback(new SurfaceHolder.Callback() {
-//      @Override
-//      public void surfaceCreated(SurfaceHolder holder) {
-//
-//      }
-//
-//      @Override
-//      public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-//      }
-//
-//      @Override
-//      public void surfaceDestroyed(SurfaceHolder holder) {
-//
-//      }
-//    });
-
-
-
   }
 
   // Activity interfaces

@@ -95,7 +95,7 @@ public class ConnectActivity extends Activity {
 
   private boolean bNoCreateSide = false;
   private boolean bCreateChannelSide = false;
-  private boolean bAutoConnect = true;
+  private boolean bAutoConnect = false;
   private String username = "";
   private String password = "";
   private String DS2RoomID = "";
