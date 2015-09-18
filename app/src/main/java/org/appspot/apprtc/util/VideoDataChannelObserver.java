@@ -39,7 +39,6 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
         this.events = pc.getPeerConnectionEvents();
         this.executor = exe;
         this.channelNumber = Integer.valueOf(dc.label().replaceAll("[^0-9]+",""));
-
     }
 
     boolean bLiveView = false;
@@ -59,7 +58,7 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
     LocalSocket mReceiver = null;
     LocalSocket mSender   = null;
     int         mSocketId;
-    final String LOCAL_ADDR = "com.via.hank-";
+    final String LOCAL_ADDR = "DataChannelToVideoDecodeThread-";
     public OutputStream os = null;
     public WritableByteChannel writableByteChannel;
     public InputStream is = null;
@@ -165,28 +164,33 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
                     case MIME:
                         mime = msgValue;
                         break;
-                    case START:
-                        if(vt!=null) {
+                    case START: {
+                        if (vt != null) {
                             vt.setStop();
                             vt.interrupt();
                             vt = null;
                         }
 
-                        for(int jj=0;jj<10;jj++) {
+                        for (int jj = 0; jj < 10; jj++) {
                             try {
                                 mSocketId = new Random().nextInt();
-                                mLss = new LocalServerSocket(LOCAL_ADDR+mSocketId);
+                                mLss = new LocalServerSocket(LOCAL_ADDR + mSocketId);
                                 break;
                             } catch (IOException e) {
                                 Log.e("HANK", "fail to create localserversocket :" + e);
                             }
                         }
-
+                        //    DECODE FLOW
+                        //
+                        //    Intermediary:                             Localsocket       MediaCodec inputBuffer     MediaCodec outputBuffer
+                        //        Flow    : Data Channel =======> Sender ========> Receiver ==================> Decoder =================> Display to surface/ Play by Audio Track
+                        //       Thread   : |<---Data Channel thread--->|          |<--------- Decode Thread --------->|                 |<--------- Display/play Thread -------->|
+                        //
                         mReceiver = new LocalSocket();
                         try {
-                            mReceiver.connect( new LocalSocketAddress(LOCAL_ADDR+mSocketId));
+                            mReceiver.connect(new LocalSocketAddress(LOCAL_ADDR + mSocketId));
                             mReceiver.setReceiveBufferSize(100000);
-                            mReceiver.setSoTimeout(3000);
+                            mReceiver.setSoTimeout(2000);
                             mSender = mLss.accept();
                             mSender.setSendBufferSize(100000);
                         } catch (IOException e) {
@@ -198,7 +202,7 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
                             writableByteChannel = Channels.newChannel(os);
                             is = mReceiver.getInputStream();
                         } catch (IOException e) {
-                            Log.e("HANK","fail to get mSender mReceiver :"+e);
+                            Log.e("HANK", "fail to get mSender mReceiver :" + e);
                             e.printStackTrace();
                         }
 
@@ -210,17 +214,19 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
 
                             }
                         });
-                        vt = new VideoThread(surfaceView.getHolder().getSurface(),mime,width,height,sps,pps,is);
+                        vt = new VideoThread(surfaceView.getHolder().getSurface(), mime, width, height, sps, pps, is);
                         vt.start();
 
                         bLiveView = true;
-                        videoMsg = videoMsg + "START,"+width+"x"+height+"("+mime+")";
+                        videoMsg = videoMsg + "START," + width + "x" + height + "(" + mime + ")";
                         bShowToast = true;
                         bStart = true;
 
                         break;
+                    }
                     case STOP:
-                        if(bStart) {
+                    {
+                        if (bStart) {
                             videoMsg = videoMsg + "STOP";
                             bLiveView = false;
                             bStart = false;
@@ -243,9 +249,10 @@ public class VideoDataChannelObserver implements DataChannel.Observer {
                             pcc.getLiveViewInfo().removeOnChannel(channelNumber);
 
                         } else {
-                            Log.d("HANK","It is already stop lo.");
+                            Log.d("HANK", "It is already stop lo.");
                         }
                         break;
+                    }
                 }
 
                 if(bShowToast) {

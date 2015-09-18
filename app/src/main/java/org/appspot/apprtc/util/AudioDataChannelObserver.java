@@ -41,24 +41,34 @@ public class AudioDataChannelObserver implements DataChannel.Observer {
         Log.d("HANK",dataChannel.label()+":"+dataChannel.state().toString());
     }
 
-
     LocalServerSocket mLss = null;
     LocalSocket mReceiver = null;
     LocalSocket mSender   = null;
     int         mSocketId;
-    final String LOCAL_ADDR = "com.via.hank-";
+    final String LOCAL_ADDR = "DataChannelToAudioDecodeThread-";
     public OutputStream os = null;
     public WritableByteChannel writableByteChannel = null;
     public InputStream is = null;
     AudioThread at = null;
+    NormalAudioThread nat = null;
     boolean bStart = false;
+    SourceType sourceType = SourceType.UNKNOWN; // -1 : undefine ,0 : OV ,1 : RTSP
+    String setting = null;
 
-    public void stopThread() {if(at!=null){at.setStop();at.interrupt();at=null;}}
+    public enum SourceType {
+        UNKNOWN,
+        OV,
+        RTSP,
+    }
+
+    public void stopThread() {
+        if(at!=null){at.setStop();at.interrupt();at=null;}
+        if(nat!=null){nat.setStop();nat.interrupt();nat=null;}
+    }
 
     private boolean isAudioMessage(String msg) {
         return msg.equalsIgnoreCase(AUDIO_PREFIX);
     }
-
 
     @Override
     public void onMessage(final DataChannel.Buffer inbuf) {
@@ -88,8 +98,31 @@ public class AudioDataChannelObserver implements DataChannel.Observer {
 
             if(isAudioMessage(msgType)) {
                 String audioMsg = "Get Audio: ";
+                Log.d("HANK",audioMsg + command);
+
+                if(msgKey.equalsIgnoreCase("SET")) {
+
+                    if (cmd_split[2].equalsIgnoreCase("OV")) {
+                        sourceType = SourceType.OV;
+                        setting = "";
+                    }else if (cmd_split[2].equalsIgnoreCase("RTSP")) {
+                        sourceType = SourceType.RTSP;
+                        // collect parameter after SET:
+                        // ex: 1. AUDIO:SET:RTSP:AAC:1:8000:1588:.....
+                        // ex: 2. AUDIO:SET:RTSP:mG711:1:....
+                        // ex: 3. AUDIO:SET:RTSP:aG711:1:....
+                        setting = command.substring(10,command.length());
+                        Log.d("HANK",setting);
+                    }
+                }
 
                 if(msgKey.equalsIgnoreCase("START")) {
+
+                    if(sourceType==SourceType.UNKNOWN) {
+                        Log.e("HANK","Audio Something wrong!!");
+                        return;
+                    }
+
                     audioMsg = audioMsg + "START";
 
                     if(at!=null) {
@@ -97,6 +130,13 @@ public class AudioDataChannelObserver implements DataChannel.Observer {
                         at.interrupt();
                         at = null;
                     }
+
+                    if(nat!=null) {
+                        nat.setStop();
+                        nat.interrupt();
+                        nat = null;
+                    }
+
                     for(int jj=0;jj<10;jj++) {
                         try {
                             mSocketId = new Random().nextInt();
@@ -107,11 +147,17 @@ public class AudioDataChannelObserver implements DataChannel.Observer {
                         }
                     }
 
+                    //    DECODE FLOW
+                    //
+                    //    Intermediary:                             Localsocket       MediaCodec inputBuffer     MediaCodec outputBuffer
+                    //        Flow    : Data Channel =======> Sender ========> Receiver ==================> Decoder =================> Display to surface/ Play by Audio Track
+                    //       Thread   : |<---Data Channel thread--->|          |<--------- Decode Thread --------->|                 |<--------- Display/play Thread -------->|
+                    //
                     mReceiver = new LocalSocket();
                     try {
                         mReceiver.connect( new LocalSocketAddress(LOCAL_ADDR+mSocketId));
                         mReceiver.setReceiveBufferSize(100000);
-                        mReceiver.setSoTimeout(3000);
+                        mReceiver.setSoTimeout(200);
                         mSender = mLss.accept();
                         mSender.setSendBufferSize(100000);
                     } catch (IOException e) {
@@ -128,8 +174,15 @@ public class AudioDataChannelObserver implements DataChannel.Observer {
                     }
                     bStart = true;
 
-                    at = new AudioThread(is);
-                    at.start();
+                    if(sourceType == SourceType.OV) {
+                        // using self adpcm_ima decoder to decode audio
+                        at = new AudioThread(is);
+                        at.start();
+                    } else if(sourceType == SourceType.RTSP) {
+                        // using mediaCodec to decode audio
+                        nat = new NormalAudioThread(is,setting);
+                        nat.start();
+                    }
                 }
 
                 if(msgKey.equalsIgnoreCase("STOP")) {
@@ -146,23 +199,23 @@ public class AudioDataChannelObserver implements DataChannel.Observer {
                         } catch (Exception e) {
                             Log.e("HANK", "Close input/output stream error : " + e);
                         }
-                        at.setStop();
-                        at.interrupt();
-                        at = null;
+
+                        if(at!=null) {
+                            at.setStop();
+                            at.interrupt();
+                            at = null;
+                        }
+
+                        if(nat!=null) {
+                            nat.setStop();
+                            nat.interrupt();
+                            nat = null;
+                        }
+
                         bStart = false;
                     }
                 }
-
-
-
             }
-
-
-
-
-
         }
-
-
     }
 }

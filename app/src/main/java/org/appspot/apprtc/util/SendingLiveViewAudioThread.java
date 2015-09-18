@@ -37,6 +37,14 @@ public class SendingLiveViewAudioThread extends Thread {
         try {
             localSocket.connect(new LocalSocketAddress(ipAddress + "-audio"));
             instream = localSocket.getInputStream();
+
+            byte[] first_data = new byte[512];
+            int n = instream.read(first_data);
+            String first_msg = new String(first_data,"UTF-8");
+            Log.d("HANK-AUDIO","get first_data : "+first_msg);
+            pc.sendAudioInfo(channelIndex, "SET:"+first_msg);
+
+
             pc.sendAudioInfo(channelIndex, "START");
 
         } catch (IOException e) {

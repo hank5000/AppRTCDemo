@@ -5,6 +5,8 @@ import android.media.MediaFormat;
 import android.util.Log;
 import android.view.Surface;
 
+import org.webrtc.DataChannel;
+
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
@@ -20,6 +22,7 @@ public class VideoThread extends Thread {
     private Surface surface;
     private InputStream is;
     private boolean bStart = true;
+    VideoDisplayThread vdt = null;
 
     public void setStop() {
         bStart = false;
@@ -51,6 +54,9 @@ public class VideoThread extends Thread {
         this.is       = inputStream;
     }
 
+    final static String MediaFormat_SPS = "csd-0";
+    final static String MediaFormat_PPS = "csd-1";
+
     public void run() {
 
         /// Create Decoder -START- ///
@@ -59,8 +65,9 @@ public class VideoThread extends Thread {
             format.setString(MediaFormat.KEY_MIME, mMime);
             format.setInteger(MediaFormat.KEY_WIDTH, mWidth);
             format.setInteger(MediaFormat.KEY_HEIGHT, mHeight);
-            format.setByteBuffer("csd-0", ByteBuffer.wrap(hexStringToByteArray(mSPS)));
-            format.setByteBuffer("csd-1", ByteBuffer.wrap(hexStringToByteArray(mPPS)));
+            format.setByteBuffer(MediaFormat_SPS, ByteBuffer.wrap(hexStringToByteArray(mSPS)));
+            format.setByteBuffer(MediaFormat_PPS, ByteBuffer.wrap(hexStringToByteArray(mPPS)));
+
             decoder = MediaCodec.createDecoderByType(mMime);
             if(decoder == null) {
                 Log.d("HANK", "This device cannot support codec :" + mMime);
@@ -85,8 +92,14 @@ public class VideoThread extends Thread {
         int collectLength;
         int frameCount = 0;
         int j = 0;
+
+        if(vdt == null) {
+            vdt = new VideoDisplayThread(decoder,outputBuffers,info);
+            vdt.start();
+        }
+
         while (!Thread.interrupted() && bStart) {
-            int inIndex = decoder.dequeueInputBuffer(10000);
+            int inIndex = decoder.dequeueInputBuffer(1000);
             if (inIndex > 0) {
 
                 while (!Thread.interrupted() && bStart) {
@@ -149,42 +162,52 @@ public class VideoThread extends Thread {
                 }
             }
 
-
-            int outIndex = decoder.dequeueOutputBuffer(info, 10000);
-            switch (outIndex) {
-                case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
-                    Log.d("DecodeActivity", "INFO_OUTPUT_BUFFERS_CHANGED");
-                    outputBuffers = decoder.getOutputBuffers();
-                    break;
-                case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
-                    Log.d("DecodeActivity", "New format " + decoder.getOutputFormat());
-                    break;
-                case MediaCodec.INFO_TRY_AGAIN_LATER:
-                    //Log.d("DecodeActivity", "dequeueOutputBuffer timed out!");
-                    break;
-                default:
-                    // ByteBuffer buffer = outputBuffers[outIndex];
-                    // Log.v("DecodeActivity", "We can't use this buffer but render it due to the API limit, " + buffer);
-                    try {
-                        sleep(10);
-                    } catch (InterruptedException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-
-                    }
-                    decoder.releaseOutputBuffer(outIndex, true);
-                    break;
-            }
-
-            // All decoded frames have been rendered, we can stop playing now
-            if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0 || (!bStart)) {
-                Log.d("DecodeActivity", "OutputBuffer BUFFER_FLAG_END_OF_STREAM");
-                break;
-            }
         }
 
         decoder.stop();
         decoder.release();
     }
     /// Decode -END- ///
+
+    public class VideoDisplayThread extends Thread {
+        MediaCodec decoder = null;
+        ByteBuffer[] outputBuffers = null;
+        MediaCodec.BufferInfo info = null;
+        public VideoDisplayThread(MediaCodec codec,ByteBuffer[] bbs, MediaCodec.BufferInfo bi) {
+            this.decoder = codec;
+            this.outputBuffers = bbs;
+            this.info = bi;
+        }
+
+        public void run() {
+            while (bStart) {
+                int outIndex = this.decoder.dequeueOutputBuffer(this.info, 10000);
+                switch (outIndex) {
+                    case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
+                        Log.d("DecodeActivity", "INFO_OUTPUT_BUFFERS_CHANGED");
+                        this.outputBuffers = this.decoder.getOutputBuffers();
+                        break;
+                    case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
+                        Log.d("DecodeActivity", "New format " + decoder.getOutputFormat());
+                        break;
+                    case MediaCodec.INFO_TRY_AGAIN_LATER:
+                        //Log.d("DecodeActivity", "dequeueOutputBuffer timed out!");
+                        break;
+                    default:
+                        // ByteBuffer buffer = outputBuffers[outIndex];
+                        // Log.v("DecodeActivity", "We can't use this buffer but render it due to the API limit, " + buffer);
+                        try {
+                            sleep(10);
+                        } catch (InterruptedException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
+                        this.decoder.releaseOutputBuffer(outIndex, true);
+                        break;
+                }
+            }
+        }
+    }
+
 }
+

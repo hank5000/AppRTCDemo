@@ -51,7 +51,6 @@ public class ServerService extends IntentService
     int notifyID = 1;
     private Toast logToast;
 
-
     private SharedPreferences sharedPref;
 
     private String keyprefCpuUsageDetection;
@@ -293,6 +292,11 @@ public class ServerService extends IntentService
         }
     }
 
+    private void updateLiveViewInfo() {
+        liveViewInfo.reset();
+        liveViewInfo.add("rtsp://192.168.12.202:554/rtpvideo1.sdp", "RTSP202");
+    }
+
     // Create peer connection factory when EGL context is ready.
     private void createPeerConnectionFactory() {
         handler.post(new Runnable() {
@@ -302,13 +306,13 @@ public class ServerService extends IntentService
                     final long delta = System.currentTimeMillis() - callStartedTimeMs;
                     Log.d(TAG, "Creating peer connection factory, delay=" + delta + "ms");
                     peerConnectionClient = PeerConnectionClient.getInstance();
-                    peerConnectionClient.setLiveViewSurface(surfaceViews);
-                    liveViewInfo.reset();
-                    liveViewInfo.add("RTSP", "RTSP202");
-                    liveViewInfo.add("192.168.12.114","OV114");
+
+                    updateLiveViewInfo();
+
                     peerConnectionClient.setLiveViewInfo(liveViewInfo);
                     peerConnectionClient.setUsernameAndPassword(username, password);
                     peerConnectionClient.createPeerConnectionFactory(ServerService.this, peerConnectionParameters, ServerService.this);
+
                 }
                 if (signalingParameters != null) {
                     Log.w(TAG, "EGL context is ready after room connection.");
