@@ -9,16 +9,15 @@ android {
         jni.srcDirs = [] //disable automatic ndk-build call
     }
 
-
     defaultConfig {
-        applicationId "org.appspot.apprtc"
+        applicationId "com.via.rtc"
         minSdkVersion 18
         targetSdkVersion 22
 
         versionCode 9717
         versionName "r9717"
 
-        testApplicationId "org.appspot.apprtc.test"
+        testApplicationId "com.via.rtc.test"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
     }
 

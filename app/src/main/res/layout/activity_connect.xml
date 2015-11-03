@@ -14,18 +14,13 @@
         android:gravity="center"
         android:orientation="horizontal" >
 
-        <ImageButton
-            android:id="@+id/refresh_button"
-            android:background="@drawable/refresh2"
-            android:contentDescription="@string/remove_room_description"
-            android:layout_width="120dp"
-            android:layout_height="120dp"/>
+
     <RelativeLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal" >
             <TextView
-                android:id="@+id/room_listview_description"
+                android:id="@+id/textview_ds2status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="60dp"
@@ -39,7 +34,7 @@
 
             <ImageButton
                 android:id="@+id/online_offline_button"
-                android:layout_below="@+id/room_listview_description"
+                android:layout_below="@+id/textview_ds2status"
                 android:layout_centerHorizontal="true"
                 android:background="@drawable/online_shadow"
                 android:contentDescription="@string/remove_room_description"
@@ -49,6 +44,12 @@
     </RelativeLayout>
 </LinearLayout>
 
+    <ImageButton
+        android:id="@+id/refresh_button"
+        android:background="@drawable/refresh2"
+        android:contentDescription="@string/remove_room_description"
+        android:layout_width="30dp"
+        android:layout_height="30dp"/>
 
 
 <LinearLayout
@@ -73,7 +74,7 @@
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:text="Normal Mode"/>
 </LinearLayout>
-<TextView
+TextView
     android:id="@+id/room_edittext_description"
     android:layout_width="fill_parent"
     android:layout_height="wrap_content"

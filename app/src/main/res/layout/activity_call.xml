@@ -8,30 +8,30 @@
 
 
     <SurfaceView
-        android:id="@+id/liveView_call2"
-        android:layout_width="640px"
-        android:layout_height="360px"
+        android:id="@+id/liveView0"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
         android:layout_alignParentRight="true" />
 
     <SurfaceView
-        android:id="@+id/liveView_call3"
+        android:id="@+id/liveView1"
         android:layout_width="640px"
         android:layout_height="360px"
         android:layout_alignParentBottom="true"
         android:layout_alignParentStart="true" />
 
     <SurfaceView
-        android:id="@+id/liveView_call4"
+        android:id="@+id/liveView2"
         android:layout_width="640px"
         android:layout_height="360px"
-        android:layout_alignTop="@+id/liveView_call3"
+        android:layout_alignTop="@+id/liveView3"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true" />
 
     <SurfaceView
-        android:id="@+id/liveView_call"
+        android:id="@+id/liveView3"
         android:layout_width="1280px"
         android:layout_height="720px"
         android:layout_alignParentTop="false"

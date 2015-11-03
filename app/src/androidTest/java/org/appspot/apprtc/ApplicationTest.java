@@ -1,4 +1,4 @@
-package org.appspot.apprtc;
+package com.via.rtc;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;

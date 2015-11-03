@@ -6,31 +6,19 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/contact_name_call"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:layout_above="@+id/buttons_call_container"
-        android:textSize="24sp"
-        android:layout_margin="8dp"/>
 
     <LinearLayout
-           android:id="@+id/buttons_call_container"
-           android:orientation="horizontal"
-        android:layout_marginBottom="34dp"
+        android:id="@+id/buttons_call_container"
+        android:orientation="vertical"
         android:layout_width="wrap_content"
-           android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true">
-
-
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        >
 
        <ImageButton
            android:id="@+id/button_call_message"
            android:background="@drawable/message"
            android:contentDescription="@string/switch_camera"
-           android:layout_marginEnd="8dp"
            android:layout_width="48dp"
            android:layout_height="48dp"
            android:cropToPadding="false" />
@@ -39,26 +27,45 @@
             android:id="@+id/button_call_disconnect"
             android:background="@drawable/power"
             android:contentDescription="@string/disconnect_call"
-            android:layout_marginEnd="16dp"
-            android:layout_width="48dp"
-            android:layout_height="48dp"/>
+            android:layout_marginTop="30dp"
 
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_below="@+id/button_call_message"/>
         <ImageButton
            android:id="@+id/button_call_liveview"
            android:background="@drawable/camera_white"
            android:contentDescription="@string/disconnect_call"
-           android:layout_width="48dp"
-           android:layout_height="48dp"/>
+            android:layout_marginTop="30dp"
+
+            android:layout_width="48dp"
+           android:layout_height="48dp"
+            android:layout_below="@+id/button_call_disconnect"/>
 
         <ImageButton
             android:id="@+id/button_call_video"
             android:background="@drawable/video"
             android:contentDescription="@string/data_transfer"
+            android:layout_marginTop="30dp"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:layout_alignTop="@+id/buttons_call_container"
-            android:layout_toRightOf="@+id/buttons_call_container"
-            android:layout_toEndOf="@+id/buttons_call_container" />
-    </LinearLayout>
+            android:layout_below="@+id/button_call_liveview"/>
 
+</LinearLayout>
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentBottom="true"
+        >
+
+    <TextView
+        android:id="@+id/contact_name_call"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:textSize="24sp"
+        android:layout_margin="8dp"/>
+    </LinearLayout>>
 </RelativeLayout>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="no">AppRTC</string>
-    <string name="settings_name" translatable="no">AppRTC Settings</string>
+    <string name="app_name" translatable="no">VIA RTC</string>
+    <string name="settings_name" translatable="no">VIA RTC Settings</string>
     <string name="disconnect_call">Disconnect Call</string>
     <string name="room_names">Room names:</string>
     <string name="room_description">
@@ -104,7 +104,7 @@
     <string name="pref_room_server_url_key">room_server_url_preference</string>
     <string name="pref_room_server_url_title">Room server URL.</string>
     <string name="pref_room_server_url_dlg">Enter a room server URL.</string>
-    <string name="pref_room_server_url_default" translatable="false">https://apprtc.appspot.com</string>
+    <string name="pref_room_server_url_default" translatable="false">http://52.26.83.133:8080</string>
 
     <!--<string name="pref_room_server_url_default" translatable="false">http://52.26.83.133:8080</string>-->
 
@@ -113,29 +113,27 @@
     <string name="pref_displayhud_dlg">Display call statistics.</string>
     <string name="pref_displayhud_default" translatable="false">false</string>
 
-
-    <string name="pref_hank_used_key">hankused_preference</string>
-    <string name="pref_hank_used_title">Hank Extension Function</string>
+    <string name="pref_extension_key">Extension preference</string>
+    <string name="pref_extension_title">User Setting</string>
 
     <string name="pref_enable_chat_room_key_key">Enable Data Transfer(Chat Room)</string>
-    <string name="pref_enable_chat_room_key_title">Enable chat room</string>
+    <string name="pref_enable_chat_room_key_title">Enable data channel mode</string>
     <string name="pref_enable_chat_room_key_dlg">Enable Data Transfer Function.</string>
     <string name="pref_enable_chat_room_key_default">false</string>
 
     <string name="pref_enable_channel_create_side_key">Set Data Channel Create Side</string>
-    <string name="pref_enable_channel_create_side_title">Create side</string>
+    <string name="pref_enable_channel_create_side_title">Source Side</string>
     <string name="pref_enable_channel_create_side_dlg">Create Data Channel</string>
     <string name="pref_enable_channel_create_side_default">false</string>
-
 
     <string name="pref_username_key">username setting</string>
     <string name="pref_username_title">Username</string>
     <string name="pref_username_dlg">Enter your username.</string>
-    <string name="pref_username_default" translatable="false">defaultUser</string>
+    <string name="pref_username_default" translatable="false">Sales01</string>
 
     <string name="pref_password_key">password setting</string>
     <string name="pref_password_title">Password</string>
     <string name="pref_password_dlg">Enter your password</string>
-    <string name="pref_password_default" translatable="false">defaultPassword</string>
+    <string name="pref_password_default" translatable="false">123456</string>
 
 </resources>

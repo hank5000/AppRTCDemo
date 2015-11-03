@@ -14,9 +14,13 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@+id/source_setting_left_list_icon"
-        android:text="aaa"
+        android:text="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        android:ellipsize="marquee"
+        android:marqueeRepeatLimit="marquee_forever"
+        android:scrollHorizontally="true"
+        android:maxLength="10"
         android:textAlignment="center"
-        android:textSize="18sp"
+        android:textSize="12sp"
         android:textStyle="bold" />
 
 </RelativeLayout>
